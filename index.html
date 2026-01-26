@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify + Video Sync Playground</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 Spotify + Video Sync Playground</h1>
+            <p class="subtitle">Explore Spotify API and sync music with videos</p>
+        </header>
+
+        <!-- Configuration Section -->
+        <section id="config-section" class="card">
+            <h2>⚙️ Configuration</h2>
+            <div class="config-form">
+                <div class="form-group">
+                    <label for="client-id">Spotify Client ID</label>
+                    <input type="text" id="client-id" placeholder="Enter your Spotify Client ID">
+                    <small>
+                        <a href="https://developer.spotify.com/dashboard" target="_blank">Get your Client ID from Spotify Developer Dashboard</a>
+                        <br>Set redirect URI to: <code id="redirect-uri"></code>
+                    </small>
+                </div>
+                <button id="save-config" class="btn btn-secondary">Save Configuration</button>
+                <button id="auth-btn" class="btn btn-primary" disabled>Connect to Spotify</button>
+            </div>
+            <div id="auth-status" class="status-badge hidden">
+                <span class="status-dot"></span>
+                <span id="user-info">Not connected</span>
+            </div>
+        </section>
+
+        <!-- Main Playground Area -->
+        <div id="playground" class="hidden">
+            <div class="playground-grid">
+                <!-- Left Column: Spotify Controls -->
+                <section class="card spotify-section">
+                    <h2>🎧 Spotify Music</h2>
+
+                    <!-- Search -->
+                    <div class="search-container">
+                        <input type="text" id="search-input" placeholder="Search for a song...">
+                        <button id="search-btn" class="btn btn-primary">Search</button>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div id="search-results" class="search-results hidden"></div>
+
+                    <!-- Selected Track -->
+                    <div id="selected-track" class="selected-track hidden">
+                        <h3>Selected Track</h3>
+                        <div class="track-info">
+                            <img id="track-art" src="" alt="Album Art">
+                            <div class="track-details">
+                                <p id="track-name" class="track-name"></p>
+                                <p id="track-artist" class="track-artist"></p>
+                                <p id="track-album" class="track-album"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audio Features -->
+                    <div id="audio-features" class="audio-features hidden">
+                        <h3>Audio Analysis</h3>
+                        <div class="features-grid">
+                            <div class="feature">
+                                <span class="feature-label">BPM (Tempo)</span>
+                                <span id="feature-bpm" class="feature-value">--</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Key</span>
+                                <span id="feature-key" class="feature-value">--</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Energy</span>
+                                <span id="feature-energy" class="feature-value">--</span>
+                                <div class="feature-bar"><div id="bar-energy" class="bar-fill"></div></div>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Danceability</span>
+                                <span id="feature-dance" class="feature-value">--</span>
+                                <div class="feature-bar"><div id="bar-dance" class="bar-fill"></div></div>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Valence (Mood)</span>
+                                <span id="feature-valence" class="feature-value">--</span>
+                                <div class="feature-bar"><div id="bar-valence" class="bar-fill"></div></div>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Acousticness</span>
+                                <span id="feature-acoustic" class="feature-value">--</span>
+                                <div class="feature-bar"><div id="bar-acoustic" class="bar-fill"></div></div>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Instrumentalness</span>
+                                <span id="feature-instrumental" class="feature-value">--</span>
+                                <div class="feature-bar"><div id="bar-instrumental" class="bar-fill"></div></div>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Loudness</span>
+                                <span id="feature-loudness" class="feature-value">--</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Duration</span>
+                                <span id="feature-duration" class="feature-value">--</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-label">Time Signature</span>
+                                <span id="feature-time-sig" class="feature-value">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spotify Player Status -->
+                    <div id="player-status" class="player-status">
+                        <div class="status-indicator">
+                            <span class="status-dot offline"></span>
+                            <span id="player-status-text">Player not ready</span>
+                        </div>
+                        <p class="premium-note">Note: Playback requires Spotify Premium</p>
+                    </div>
+                </section>
+
+                <!-- Right Column: Video Controls -->
+                <section class="card video-section">
+                    <h2>🎬 Video Player</h2>
+
+                    <!-- YouTube URL Input -->
+                    <div class="url-input-container">
+                        <input type="text" id="youtube-url" placeholder="Paste YouTube URL here...">
+                        <button id="load-video-btn" class="btn btn-primary">Load Video</button>
+                    </div>
+
+                    <!-- Video Player -->
+                    <div id="video-container" class="video-container">
+                        <div id="youtube-player"></div>
+                        <div id="video-placeholder" class="video-placeholder">
+                            <p>Enter a YouTube URL above to load a video</p>
+                        </div>
+                    </div>
+
+                    <!-- Video Speed Controls -->
+                    <div id="speed-controls" class="speed-controls hidden">
+                        <h3>Playback Speed</h3>
+                        <div class="speed-buttons">
+                            <button class="btn btn-small speed-btn" data-speed="0.25">0.25x</button>
+                            <button class="btn btn-small speed-btn" data-speed="0.5">0.5x</button>
+                            <button class="btn btn-small speed-btn" data-speed="0.75">0.75x</button>
+                            <button class="btn btn-small speed-btn active" data-speed="1">1x</button>
+                            <button class="btn btn-small speed-btn" data-speed="1.25">1.25x</button>
+                            <button class="btn btn-small speed-btn" data-speed="1.5">1.5x</button>
+                            <button class="btn btn-small speed-btn" data-speed="2">2x</button>
+                        </div>
+                        <div class="custom-speed">
+                            <label for="custom-speed-input">Custom:</label>
+                            <input type="number" id="custom-speed-input" min="0.1" max="2" step="0.05" value="1">
+                            <button id="apply-custom-speed" class="btn btn-small">Apply</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Universal Sync Controls -->
+            <section class="card sync-controls">
+                <h2>🎛️ Synchronized Playback</h2>
+                <div class="sync-status">
+                    <div class="sync-item">
+                        <span class="sync-label">Spotify:</span>
+                        <span id="spotify-sync-status" class="sync-state">Not ready</span>
+                    </div>
+                    <div class="sync-item">
+                        <span class="sync-label">Video:</span>
+                        <span id="video-sync-status" class="sync-state">Not loaded</span>
+                    </div>
+                </div>
+
+                <div class="playback-controls">
+                    <button id="sync-play" class="btn btn-large btn-success" disabled>
+                        <span class="icon">▶</span> Play Both
+                    </button>
+                    <button id="sync-pause" class="btn btn-large btn-warning" disabled>
+                        <span class="icon">⏸</span> Pause Both
+                    </button>
+                    <button id="sync-stop" class="btn btn-large btn-danger" disabled>
+                        <span class="icon">⏹</span> Stop & Reset
+                    </button>
+                </div>
+
+                <!-- Offset Controls -->
+                <div class="offset-controls">
+                    <h3>Timing Offset</h3>
+                    <p class="help-text">Adjust if music and video are out of sync</p>
+                    <div class="offset-input">
+                        <button id="offset-minus" class="btn btn-small">-0.5s</button>
+                        <span id="offset-value">0.0s</span>
+                        <button id="offset-plus" class="btn btn-small">+0.5s</button>
+                    </div>
+                    <small>Positive = music starts later, Negative = video starts later</small>
+                </div>
+
+                <!-- Progress Display -->
+                <div class="progress-display">
+                    <div class="progress-bar-container">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    <div class="time-display">
+                        <span id="current-time">0:00</span>
+                        <span id="total-time">0:00</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Explorer Section -->
+            <section class="card api-explorer">
+                <h2>🔍 API Explorer</h2>
+                <details>
+                    <summary>View Raw API Data</summary>
+                    <div class="api-data">
+                        <h4>Track Data</h4>
+                        <pre id="raw-track-data">No track selected</pre>
+                        <h4>Audio Features</h4>
+                        <pre id="raw-audio-features">No track selected</pre>
+                        <h4>Audio Analysis (Summary)</h4>
+                        <pre id="raw-audio-analysis">No track selected</pre>
+                    </div>
+                </details>
+            </section>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="spotify-auth.js"></script>
+    <script src="spotify-player.js"></script>
+    <script src="youtube-player.js"></script>
+    <script src="sync-controller.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
