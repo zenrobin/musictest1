@@ -3,43 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify + Video Sync Playground</title>
+    <title>Music + Video Sync Playground</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎵 Spotify + Video Sync Playground</h1>
-            <p class="subtitle">Explore Spotify API and sync music with videos</p>
+            <h1>Music + Video Sync Playground</h1>
+            <p class="subtitle">Explore music APIs and sync with videos</p>
         </header>
 
-        <!-- Configuration Section -->
-        <section id="config-section" class="card">
-            <h2>⚙️ Configuration</h2>
+        <!-- Provider Selection -->
+        <section class="card provider-section">
+            <h2>Choose Music Provider</h2>
+            <div class="provider-tabs">
+                <button class="provider-tab active" data-provider="spotify">
+                    <span class="provider-icon">&#9835;</span>
+                    Spotify
+                </button>
+                <button class="provider-tab" data-provider="apple">
+                    <span class="provider-icon">&#9835;</span>
+                    Apple Music
+                </button>
+            </div>
+        </section>
+
+        <!-- Configuration Section - Spotify -->
+        <section id="config-spotify" class="card config-section">
+            <h2>Spotify Configuration</h2>
             <div class="config-form">
                 <div class="form-group">
-                    <label for="client-id">Spotify Client ID</label>
-                    <input type="text" id="client-id" placeholder="Enter your Spotify Client ID">
+                    <label for="spotify-client-id">Spotify Client ID</label>
+                    <input type="text" id="spotify-client-id" placeholder="Enter your Spotify Client ID">
                     <small>
                         <a href="https://developer.spotify.com/dashboard" target="_blank">Get your Client ID from Spotify Developer Dashboard</a>
                         <br>Set redirect URI to: <code id="redirect-uri"></code>
                     </small>
                 </div>
-                <button id="save-config" class="btn btn-secondary">Save Configuration</button>
-                <button id="auth-btn" class="btn btn-primary" disabled>Connect to Spotify</button>
+                <div class="config-buttons">
+                    <button id="spotify-save-config" class="btn btn-secondary">Save Configuration</button>
+                    <button id="spotify-auth-btn" class="btn btn-primary" disabled>Connect to Spotify</button>
+                </div>
             </div>
-            <div id="auth-status" class="status-badge hidden">
+            <div id="spotify-auth-status" class="status-badge hidden">
                 <span class="status-dot"></span>
-                <span id="user-info">Not connected</span>
+                <span id="spotify-user-info">Not connected</span>
+            </div>
+            <div class="provider-note">
+                <strong>Note:</strong> Spotify Web Playback requires a Premium account.
+            </div>
+        </section>
+
+        <!-- Configuration Section - Apple Music -->
+        <section id="config-apple" class="card config-section hidden">
+            <h2>Apple Music Configuration</h2>
+            <div class="config-form">
+                <div class="form-group">
+                    <label for="apple-dev-token">Developer Token (JWT)</label>
+                    <textarea id="apple-dev-token" rows="3" placeholder="Paste your Apple Music Developer Token here..."></textarea>
+                    <small>
+                        <a href="https://developer.apple.com/documentation/applemusicapi/getting_keys_and_creating_tokens" target="_blank">Learn how to create a Developer Token</a>
+                        <br>Requires an Apple Developer account ($99/year)
+                    </small>
+                </div>
+                <div class="config-buttons">
+                    <button id="apple-save-config" class="btn btn-secondary">Save Configuration</button>
+                    <button id="apple-auth-btn" class="btn btn-primary" disabled>Connect to Apple Music</button>
+                </div>
+            </div>
+            <div id="apple-auth-status" class="status-badge hidden">
+                <span class="status-dot"></span>
+                <span id="apple-user-info">Not connected</span>
+            </div>
+            <div class="provider-note">
+                <strong>Note:</strong> Apple Music requires an active subscription for full playback.
+                <br><strong>Limited Data:</strong> Apple Music API doesn't provide detailed audio analysis (BPM, key, energy, etc.) like Spotify does.
             </div>
         </section>
 
         <!-- Main Playground Area -->
         <div id="playground" class="hidden">
             <div class="playground-grid">
-                <!-- Left Column: Spotify Controls -->
-                <section class="card spotify-section">
-                    <h2>🎧 Spotify Music</h2>
+                <!-- Left Column: Music Controls -->
+                <section class="card music-section">
+                    <h2 id="music-section-title">Music</h2>
 
                     <!-- Search -->
                     <div class="search-container">
@@ -66,6 +113,9 @@
                     <!-- Audio Features -->
                     <div id="audio-features" class="audio-features hidden">
                         <h3>Audio Analysis</h3>
+                        <div id="audio-features-note" class="audio-features-note hidden">
+                            Apple Music does not provide detailed audio analysis data.
+                        </div>
                         <div class="features-grid">
                             <div class="feature">
                                 <span class="feature-label">BPM (Tempo)</span>
@@ -115,19 +165,19 @@
                         </div>
                     </div>
 
-                    <!-- Spotify Player Status -->
+                    <!-- Player Status -->
                     <div id="player-status" class="player-status">
                         <div class="status-indicator">
                             <span class="status-dot offline"></span>
                             <span id="player-status-text">Player not ready</span>
                         </div>
-                        <p class="premium-note">Note: Playback requires Spotify Premium</p>
+                        <p id="premium-note" class="premium-note">Note: Playback requires a Premium subscription</p>
                     </div>
                 </section>
 
                 <!-- Right Column: Video Controls -->
                 <section class="card video-section">
-                    <h2>🎬 Video Player</h2>
+                    <h2>Video Player</h2>
 
                     <!-- YouTube URL Input -->
                     <div class="url-input-container">
@@ -166,11 +216,11 @@
 
             <!-- Universal Sync Controls -->
             <section class="card sync-controls">
-                <h2>🎛️ Synchronized Playback</h2>
+                <h2>Synchronized Playback</h2>
                 <div class="sync-status">
                     <div class="sync-item">
-                        <span class="sync-label">Spotify:</span>
-                        <span id="spotify-sync-status" class="sync-state">Not ready</span>
+                        <span id="music-sync-label" class="sync-label">Music:</span>
+                        <span id="music-sync-status" class="sync-state">Not ready</span>
                     </div>
                     <div class="sync-item">
                         <span class="sync-label">Video:</span>
@@ -180,13 +230,13 @@
 
                 <div class="playback-controls">
                     <button id="sync-play" class="btn btn-large btn-success" disabled>
-                        <span class="icon">▶</span> Play Both
+                        <span class="icon">&#9654;</span> Play Both
                     </button>
                     <button id="sync-pause" class="btn btn-large btn-warning" disabled>
-                        <span class="icon">⏸</span> Pause Both
+                        <span class="icon">&#10074;&#10074;</span> Pause Both
                     </button>
                     <button id="sync-stop" class="btn btn-large btn-danger" disabled>
-                        <span class="icon">⏹</span> Stop & Reset
+                        <span class="icon">&#9632;</span> Stop & Reset
                     </button>
                 </div>
 
@@ -216,7 +266,7 @@
 
             <!-- API Explorer Section -->
             <section class="card api-explorer">
-                <h2>🔍 API Explorer</h2>
+                <h2>API Explorer</h2>
                 <details>
                     <summary>View Raw API Data</summary>
                     <div class="api-data">
@@ -235,6 +285,8 @@
     <!-- Scripts -->
     <script src="spotify-auth.js"></script>
     <script src="spotify-player.js"></script>
+    <script src="apple-music-auth.js"></script>
+    <script src="apple-music-player.js"></script>
     <script src="youtube-player.js"></script>
     <script src="sync-controller.js"></script>
     <script src="app.js"></script>

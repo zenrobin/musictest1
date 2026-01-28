@@ -1,11 +1,13 @@
 /**
  * Sync Controller Module
- * Synchronizes Spotify and YouTube playback
+ * Synchronizes music (Spotify or Apple Music) and YouTube playback
  */
 
 const SyncController = (function() {
+    let currentProvider = 'spotify'; // 'spotify' or 'apple'
     let selectedTrack = null;
     let trackUri = null;
+    let trackId = null;
     let isVideoLoaded = false;
     let isSyncing = false;
     let syncOffset = 0; // milliseconds, positive = music delayed, negative = video delayed
@@ -14,6 +16,21 @@ const SyncController = (function() {
     // Callbacks
     let onSyncStateChangeCallback = null;
     let onProgressCallback = null;
+
+    // Get current music player
+    function getMusicPlayer() {
+        return currentProvider === 'spotify' ? SpotifyPlayer : AppleMusicPlayer;
+    }
+
+    // Set current provider
+    function setProvider(provider) {
+        currentProvider = provider;
+        // Reset track when switching providers
+        selectedTrack = null;
+        trackUri = null;
+        trackId = null;
+        updateSyncState();
+    }
 
     // Initialize sync controller
     function init() {
@@ -26,8 +43,15 @@ const SyncController = (function() {
 
         // Set up Spotify state change listener
         SpotifyPlayer.onStateChange((state) => {
-            if (isSyncing) {
-                handleSpotifyStateChange(state);
+            if (isSyncing && currentProvider === 'spotify') {
+                handleMusicStateChange(state);
+            }
+        });
+
+        // Set up Apple Music state change listener
+        AppleMusicPlayer.onStateChange((state) => {
+            if (isSyncing && currentProvider === 'apple') {
+                handleMusicStateChange(state);
             }
         });
     }
@@ -36,16 +60,16 @@ const SyncController = (function() {
     function handleYouTubeStateChange(state) {
         // YouTube states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
         if (state === YouTubePlayer.PlayerState.ENDED) {
-            // Video ended, stop Spotify too
-            SpotifyPlayer.pause().catch(console.error);
+            // Video ended, stop music too
+            getMusicPlayer().pause().catch(console.error);
             stopProgressTracking();
         }
     }
 
-    // Handle Spotify state changes during sync
-    function handleSpotifyStateChange(state) {
+    // Handle music state changes during sync
+    function handleMusicStateChange(state) {
         if (state.paused && isSyncing) {
-            // Spotify paused, might want to pause video too
+            // Music paused, might want to pause video too
             // But we let the user control this via sync controls
         }
     }
@@ -54,6 +78,7 @@ const SyncController = (function() {
     function setTrack(track) {
         selectedTrack = track;
         trackUri = track?.uri || null;
+        trackId = track?.id || null;
         updateSyncState();
     }
 
@@ -75,14 +100,17 @@ const SyncController = (function() {
 
     // Check if ready to sync
     function isReadyToSync() {
-        return selectedTrack && trackUri && isVideoLoaded && SpotifyPlayer.getIsReady();
+        const player = getMusicPlayer();
+        const musicReady = player.getIsReady() && selectedTrack && (trackUri || trackId);
+        return musicReady && isVideoLoaded;
     }
 
     // Update sync state and notify listeners
     function updateSyncState() {
         if (onSyncStateChangeCallback) {
+            const player = getMusicPlayer();
             onSyncStateChangeCallback({
-                spotifyReady: SpotifyPlayer.getIsReady() && !!selectedTrack,
+                musicReady: player.getIsReady() && !!selectedTrack,
                 videoReady: isVideoLoaded,
                 canSync: isReadyToSync()
             });
@@ -96,6 +124,7 @@ const SyncController = (function() {
         }
 
         isSyncing = true;
+        const player = getMusicPlayer();
 
         try {
             // Mute YouTube
@@ -103,15 +132,15 @@ const SyncController = (function() {
 
             // Calculate starting positions based on offset
             let videoStartTime = 0;
-            let spotifyStartTime = 0;
+            let musicStartTime = 0;
 
             if (syncOffset > 0) {
                 // Positive offset: music starts later
-                // Start video immediately, delay Spotify
-                spotifyStartTime = syncOffset;
+                // Start video immediately, delay music
+                musicStartTime = syncOffset;
             } else if (syncOffset < 0) {
                 // Negative offset: video starts later
-                // Start Spotify immediately, delay video
+                // Start music immediately, delay video
                 videoStartTime = Math.abs(syncOffset) / 1000; // Convert to seconds for YouTube
             }
 
@@ -124,8 +153,10 @@ const SyncController = (function() {
             // Start video
             YouTubePlayer.play();
 
-            // Start Spotify (at offset position if needed)
-            await SpotifyPlayer.play(trackUri, spotifyStartTime);
+            // Start music (at offset position if needed)
+            // For Spotify, use URI; for Apple Music, use ID
+            const trackIdentifier = currentProvider === 'spotify' ? trackUri : trackId;
+            await player.play(trackIdentifier, musicStartTime);
 
             // Start progress tracking
             startProgressTracking();
@@ -138,9 +169,10 @@ const SyncController = (function() {
 
     // Pause both
     async function pauseBoth() {
+        const player = getMusicPlayer();
         try {
             YouTubePlayer.pause();
-            await SpotifyPlayer.pause();
+            await player.pause();
         } catch (error) {
             console.error('Error pausing:', error);
         }
@@ -154,9 +186,10 @@ const SyncController = (function() {
             return;
         }
 
+        const player = getMusicPlayer();
         try {
             YouTubePlayer.play();
-            await SpotifyPlayer.resume();
+            await player.resume();
         } catch (error) {
             console.error('Error resuming:', error);
         }
@@ -167,11 +200,12 @@ const SyncController = (function() {
         isSyncing = false;
         stopProgressTracking();
 
+        const player = getMusicPlayer();
         try {
             YouTubePlayer.stop();
             YouTubePlayer.seek(0);
-            await SpotifyPlayer.seek(0);
-            await SpotifyPlayer.pause();
+            await player.seek(0);
+            await player.pause();
         } catch (error) {
             console.error('Error stopping:', error);
         }
@@ -185,15 +219,16 @@ const SyncController = (function() {
             if (onProgressCallback) {
                 const videoTime = YouTubePlayer.getCurrentTime();
                 const videoDuration = YouTubePlayer.getDuration();
-                const spotifyState = SpotifyPlayer.getPosition();
-                const spotifyDuration = SpotifyPlayer.getDuration();
+                const player = getMusicPlayer();
+                const musicPosition = player.getPosition();
+                const musicDuration = player.getDuration();
 
                 // Use video as primary timeline (since it's what user sees)
                 onProgressCallback({
                     currentTime: videoTime * 1000, // Convert to ms
-                    duration: Math.max(videoDuration * 1000, spotifyDuration || 0),
+                    duration: Math.max(videoDuration * 1000, musicDuration || 0),
                     videoTime: videoTime,
-                    spotifyTime: spotifyState,
+                    musicTime: musicPosition,
                     isPlaying: YouTubePlayer.isPlaying()
                 });
             }
@@ -238,8 +273,15 @@ const SyncController = (function() {
         return selectedTrack;
     }
 
+    // Get current provider
+    function getProvider() {
+        return currentProvider;
+    }
+
     return {
         init,
+        setProvider,
+        getProvider,
         setTrack,
         setVideoLoaded,
         setOffset,

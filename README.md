@@ -1,137 +1,180 @@
-# Spotify + Video Sync Playground
+# Music + Video Sync Playground
 
-A web-based playground to explore the Spotify API and synchronize music playback with YouTube videos.
+A web-based playground to explore music streaming APIs (Spotify and Apple Music) and synchronize music playback with YouTube videos.
+
+**[Live Demo](https://yourusername.github.io/musictest1/)** (replace with your GitHub Pages URL)
 
 ## Features
+
+### Multi-Provider Support
+Switch between **Spotify** and **Apple Music** with a simple tab interface. Each provider has its own configuration and authentication.
 
 ### Spotify Integration
 - **OAuth 2.0 with PKCE** - Secure authentication without exposing client secrets
 - **Music Search** - Search Spotify's catalog for any track
-- **Audio Features** - View detailed track analysis including:
+- **Rich Audio Features** - View detailed track analysis including:
   - BPM (Tempo)
   - Musical Key
-  - Energy level
-  - Danceability
-  - Valence (mood/positivity)
-  - Acousticness
-  - Instrumentalness
-  - Loudness
-  - Time Signature
+  - Energy, Danceability, Valence
+  - Acousticness, Instrumentalness
+  - Loudness, Time Signature
 - **Web Playback SDK** - Control playback directly in the browser (requires Spotify Premium)
+
+### Apple Music Integration
+- **MusicKit JS** - Official Apple Music web SDK
+- **Music Search** - Search Apple Music's catalog
+- **Basic Track Info** - Album, artist, duration
+- **Web Playback** - Play music directly (requires Apple Music subscription)
+
+> **Note:** Apple Music API doesn't provide detailed audio analysis (BPM, key, energy, etc.) like Spotify does.
 
 ### YouTube Integration
 - **Video Embedding** - Load any YouTube video by URL
 - **Playback Speed Control** - Adjust video speed from 0.25x to 2x
-- **Muted Playback** - Video plays muted while Spotify provides audio
+- **Muted Playback** - Video plays muted while your music provider plays audio
 
 ### Synchronized Playback
 - **Universal Play/Pause/Stop** - Control both players simultaneously
 - **Timing Offset** - Adjust sync offset to align music with video
 - **Progress Tracking** - Visual progress bar and time display
 
-## Setup
+## Deploy to GitHub Pages
 
-### 1. Create a Spotify App
+This app works entirely client-side and is ready for GitHub Pages deployment.
 
+### Quick Deploy
+
+1. Fork or clone this repository
+2. Go to your repo's **Settings** > **Pages**
+3. Under "Source", select **Deploy from a branch**
+4. Choose **main** (or master) branch and **/ (root)** folder
+5. Click **Save**
+6. Your site will be live at `https://yourusername.github.io/repo-name/`
+
+### Important: Update Redirect URIs
+
+After deploying, update your music provider settings:
+
+**For Spotify:**
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Log in with your Spotify account
-3. Click "Create App"
-4. Fill in the details:
-   - App Name: `Video Sync Playground` (or any name)
-   - App Description: `Test app for syncing music with video`
-   - Redirect URI: `http://localhost:8000/` (or your hosting URL)
-5. Check the agreement box and click "Create"
-6. Copy your **Client ID** from the app settings
+2. Select your app > Edit Settings
+3. Add your GitHub Pages URL to Redirect URIs:
+   ```
+   https://yourusername.github.io/repo-name/
+   ```
 
-### 2. Configure Redirect URI
+**For Apple Music:**
+Your Developer Token will work on any domain, but ensure your Apple Developer account is active.
 
-In your Spotify app settings, add your redirect URI. This should match exactly where you're hosting the app:
-- Local development: `http://localhost:8000/`
-- GitHub Pages: `https://yourusername.github.io/repo-name/`
-- Other hosting: Your exact URL
+## Local Development
 
-### 3. Run the App
-
-#### Option A: Python Simple Server
+### Option A: Python Simple Server
 ```bash
 cd musictest1
 python -m http.server 8000
 ```
-Then open `http://localhost:8000`
+Open `http://localhost:8000`
 
-#### Option B: Node.js (npx serve)
+### Option B: Node.js
 ```bash
 npx serve .
 ```
 
-#### Option C: Live Server (VS Code)
-Right-click `index.html` and select "Open with Live Server"
+### Option C: VS Code Live Server
+Right-click `index.html` > "Open with Live Server"
 
-### 4. Connect Your Spotify Account
+## Setup Guide
 
-1. Enter your Spotify Client ID in the configuration section
-2. Click "Save Configuration"
-3. Click "Connect to Spotify"
-4. Authorize the app with your Spotify account
+### Spotify Setup
+
+1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Log in and click **Create App**
+3. Fill in:
+   - App Name: `Music Video Sync` (or any name)
+   - Redirect URI: Your deployment URL (e.g., `http://localhost:8000/` or GitHub Pages URL)
+4. Copy your **Client ID**
+5. In the playground, paste your Client ID and click **Connect to Spotify**
+
+### Apple Music Setup
+
+Apple Music requires more setup but provides a different experience:
+
+1. You need an [Apple Developer Account](https://developer.apple.com/) ($99/year)
+2. Create a MusicKit identifier and private key
+3. Generate a Developer Token (JWT) - [Apple's Guide](https://developer.apple.com/documentation/applemusicapi/getting_keys_and_creating_tokens)
+4. Paste the token in the playground
+
+> **Tip:** Developer tokens are valid for up to 6 months. You'll need to regenerate them periodically.
 
 ## Usage
 
 ### Search and Select Music
-1. Use the search bar to find a song
-2. Click on a search result to select it
-3. View the audio features and analysis data
+1. Choose your provider (Spotify or Apple Music)
+2. Connect/authenticate with your account
+3. Search for a song and click to select it
+4. View audio features (Spotify) or track info (Apple Music)
 
 ### Load a YouTube Video
-1. Paste a YouTube URL (supports standard, short, and embed URLs)
-2. Click "Load Video"
-3. Adjust playback speed if needed
+1. Paste any YouTube URL (supports standard, short, and embed URLs)
+2. Click **Load Video**
+3. Optionally adjust playback speed
 
 ### Synchronized Playback
-1. Select a track from Spotify
+1. Select a track from your music provider
 2. Load a YouTube video
-3. Click "Play Both" to start synchronized playback
-4. Use "Pause Both" or "Stop & Reset" to control playback
-5. Adjust the timing offset if the music and video are out of sync
+3. Click **Play Both** to start synchronized playback
+4. Use offset controls if music and video are out of sync
+5. Use **Pause Both** or **Stop & Reset** to control playback
 
-## Audio Features Explained
+## Audio Features Explained (Spotify Only)
 
 | Feature | Description |
 |---------|-------------|
 | **BPM (Tempo)** | Beats per minute - the speed of the track |
-| **Key** | The musical key (C, D, E, etc.) and mode (Major/Minor) |
+| **Key** | Musical key (C, D, E, etc.) and mode (Major/Minor) |
 | **Energy** | Intensity and activity level (0-100%) |
-| **Danceability** | How suitable the track is for dancing (0-100%) |
+| **Danceability** | How suitable for dancing (0-100%) |
 | **Valence** | Musical positivity/happiness (0-100%) |
 | **Acousticness** | Confidence the track is acoustic (0-100%) |
-| **Instrumentalness** | Likelihood the track has no vocals (0-100%) |
+| **Instrumentalness** | Likelihood of no vocals (0-100%) |
 | **Loudness** | Overall loudness in decibels (dB) |
 | **Time Signature** | Beats per measure (e.g., 4/4) |
 
 ## Limitations
 
-- **Spotify Premium Required**: The Web Playback SDK requires a Spotify Premium account for actual playback
-- **Same Device**: Playback must occur on the same device as the browser
-- **Browser Support**: Works best in Chrome, Firefox, and Edge
-- **YouTube Restrictions**: Some videos may not allow embedding
+- **Spotify Premium Required** - Web Playback SDK needs Premium
+- **Apple Music Subscription Required** - For full playback
+- **Apple Developer Account** - Required for Apple Music ($99/year)
+- **Some Videos Restricted** - Some YouTube videos don't allow embedding
 
 ## Files
 
 ```
 musictest1/
-├── index.html         # Main HTML structure
-├── styles.css         # Styling
-├── app.js             # Main application logic
-├── spotify-auth.js    # Spotify OAuth PKCE authentication
-├── spotify-player.js  # Spotify Web Playback SDK wrapper
-├── youtube-player.js  # YouTube IFrame API wrapper
-├── sync-controller.js # Synchronization logic
-└── README.md          # This file
+├── index.html           # Main HTML structure
+├── styles.css           # Styling
+├── app.js               # Main application logic
+├── spotify-auth.js      # Spotify OAuth PKCE authentication
+├── spotify-player.js    # Spotify Web Playback SDK wrapper
+├── apple-music-auth.js  # Apple Music MusicKit authentication
+├── apple-music-player.js # Apple Music MusicKit player
+├── youtube-player.js    # YouTube IFrame API wrapper
+├── sync-controller.js   # Provider-agnostic sync logic
+└── README.md            # This file
 ```
+
+## Browser Support
+
+- Chrome (recommended)
+- Firefox
+- Safari
+- Edge
 
 ## Future Enhancements (Phase 2)
 
-- Custom video upload support for more control
+- Custom video upload for more control
 - Beat detection and automatic sync alignment
 - Multiple track queueing
 - Scene markers and bookmarks
 - Export sync configurations
+- SoundCloud integration
