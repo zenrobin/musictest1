@@ -8,9 +8,12 @@
     let currentProvider = 'spotify';
     let isAuthenticated = false;
     let isPlaying = false;
+    let hasStartedPlaying = false; // Track if we've started at least once
     let selectedTrack = null;
     let searchResultsCache = {};
     let fadeOnEnd = true;
+    let currentDuration = 0; // Track total duration for seeking
+    let isDragging = false;
 
     // Spotify Top 50 Global playlist ID for random songs
     const TOP_PLAYLIST_ID = '37i9dQZEVXbMDoHDwVN2tF';
@@ -68,6 +71,7 @@
     // DOM Elements - Playback
     const mainPlayBtn = document.getElementById('main-play-btn');
     const stopResetBtn = document.getElementById('stop-reset-btn');
+    const progressBarContainer = document.querySelector('.progress-bar-container');
     const progressBar = document.getElementById('progress-bar');
     const currentTimeEl = document.getElementById('current-time');
     const totalTimeEl = document.getElementById('total-time');
@@ -355,6 +359,17 @@
         mainPlayBtn.addEventListener('click', togglePlayback);
         stopResetBtn.addEventListener('click', stopAndReset);
 
+        // Progress bar scrubbing
+        progressBarContainer.addEventListener('click', handleScrub);
+        progressBarContainer.addEventListener('mousedown', startDragging);
+        document.addEventListener('mousemove', handleDrag);
+        document.addEventListener('mouseup', stopDragging);
+
+        // Touch support for mobile
+        progressBarContainer.addEventListener('touchstart', startDragging);
+        document.addEventListener('touchmove', handleDrag);
+        document.addEventListener('touchend', stopDragging);
+
         // Tools
         offsetMinusBtn.addEventListener('click', () => adjustOffset(-500));
         offsetPlusBtn.addEventListener('click', () => adjustOffset(500));
@@ -460,6 +475,7 @@
     // Clear selected track
     function clearSelectedTrack() {
         selectedTrack = null;
+        hasStartedPlaying = false; // Reset so next play starts fresh
         selectedTrackMini.classList.add('hidden');
         currentSongDisplay.textContent = 'No song selected';
         SyncController.setTrack(null);
@@ -504,7 +520,13 @@
             await SyncController.pauseBoth();
             isPlaying = false;
         } else {
-            await SyncController.playBoth();
+            // Resume if we've already started, otherwise start fresh
+            if (hasStartedPlaying) {
+                await SyncController.resumeBoth();
+            } else {
+                await SyncController.playBoth();
+                hasStartedPlaying = true;
+            }
             isPlaying = true;
         }
 
@@ -514,6 +536,7 @@
     // Stop and reset
     async function stopAndReset() {
         isPlaying = false;
+        hasStartedPlaying = false; // Reset so next play starts fresh
 
         // Stop YouTube
         YouTubePlayer.stop();
@@ -536,6 +559,51 @@
         SyncController.stopBoth();
 
         updatePlayButton();
+    }
+
+    // Calculate position from mouse/touch event
+    function getPositionFromEvent(e) {
+        const rect = progressBarContainer.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        return percent * currentDuration;
+    }
+
+    // Handle scrub click
+    async function handleScrub(e) {
+        if (!SyncController.isReadyToSync() || currentDuration === 0) return;
+
+        const positionMs = getPositionFromEvent(e);
+        await SyncController.seekBoth(positionMs);
+        hasStartedPlaying = true; // Mark as started so play resumes from here
+    }
+
+    // Start dragging
+    function startDragging(e) {
+        if (!SyncController.isReadyToSync() || currentDuration === 0) return;
+        isDragging = true;
+        e.preventDefault();
+    }
+
+    // Handle drag
+    async function handleDrag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const positionMs = getPositionFromEvent(e);
+        const percent = (positionMs / currentDuration) * 100;
+        progressBar.style.width = `${percent}%`;
+        currentTimeEl.textContent = formatTime(positionMs);
+    }
+
+    // Stop dragging
+    async function stopDragging(e) {
+        if (!isDragging) return;
+        isDragging = false;
+
+        const positionMs = getPositionFromEvent(e.changedTouches ? e.changedTouches[0] : e);
+        await SyncController.seekBoth(positionMs);
+        hasStartedPlaying = true;
     }
 
     // Update play button state
@@ -584,6 +652,7 @@
 
     // Handle progress updates
     function handleProgress(data) {
+        currentDuration = data.duration; // Store for seeking
         const percent = (data.currentTime / data.duration) * 100;
         progressBar.style.width = `${Math.min(percent, 100)}%`;
         currentTimeEl.textContent = formatTime(data.currentTime);

@@ -480,18 +480,34 @@ header h1 {
 }
 
 .progress-bar-container {
-    height: 6px;
+    height: 8px;
     background: var(--bg-secondary);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
     margin-bottom: 8px;
+    cursor: pointer;
+    position: relative;
+}
+
+.progress-bar-container:hover {
+    height: 12px;
+}
+
+.progress-bar-container::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    bottom: -8px;
+    left: 0;
+    right: 0;
 }
 
 .progress-bar {
     height: 100%;
     background: var(--accent-color);
     width: 0%;
-    transition: width 0.25s linear;
+    transition: width 0.1s linear;
+    pointer-events: none;
 }
 
 .time-display {

@@ -211,6 +211,23 @@ const SyncController = (function() {
         }
     }
 
+    // Seek both to a specific position (in milliseconds)
+    async function seekBoth(positionMs) {
+        const player = getMusicPlayer();
+        const videoPositionSec = positionMs / 1000;
+
+        try {
+            // Seek video
+            YouTubePlayer.seek(videoPositionSec);
+
+            // Seek music (accounting for offset)
+            const musicPositionMs = Math.max(0, positionMs + syncOffset);
+            await player.seek(musicPositionMs);
+        } catch (error) {
+            console.error('Error seeking:', error);
+        }
+    }
+
     // Start progress tracking
     function startProgressTracking() {
         stopProgressTracking(); // Clear any existing interval
@@ -291,6 +308,7 @@ const SyncController = (function() {
         pauseBoth,
         resumeBoth,
         stopBoth,
+        seekBoth,
         setVideoSpeed,
         getVideoSpeed,
         onSyncStateChange,
