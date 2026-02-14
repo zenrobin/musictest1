@@ -211,7 +211,7 @@ const SyncController = (function() {
         }
     }
 
-    // Seek both to a specific position (in milliseconds)
+    // Seek both to a specific position (in milliseconds based on video timeline)
     async function seekBoth(positionMs) {
         const player = getMusicPlayer();
         const videoPositionSec = positionMs / 1000;
@@ -220,8 +220,8 @@ const SyncController = (function() {
             // Seek video
             YouTubePlayer.seek(videoPositionSec);
 
-            // Seek music (accounting for offset)
-            const musicPositionMs = Math.max(0, positionMs + syncOffset);
+            // Seek music (accounting for offset, must be integer)
+            const musicPositionMs = Math.max(0, Math.round(positionMs + syncOffset));
             await player.seek(musicPositionMs);
         } catch (error) {
             console.error('Error seeking:', error);
@@ -238,12 +238,11 @@ const SyncController = (function() {
                 const videoDuration = YouTubePlayer.getDuration();
                 const player = getMusicPlayer();
                 const musicPosition = player.getPosition();
-                const musicDuration = player.getDuration();
 
-                // Use video as primary timeline (since it's what user sees)
+                // Use video duration as the scrubber timeline (video is primary)
                 onProgressCallback({
                     currentTime: videoTime * 1000, // Convert to ms
-                    duration: Math.max(videoDuration * 1000, musicDuration || 0),
+                    duration: videoDuration * 1000, // Video duration only
                     videoTime: videoTime,
                     musicTime: musicPosition,
                     isPlaying: YouTubePlayer.isPlaying()

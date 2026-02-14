@@ -189,7 +189,9 @@ const SpotifyPlayer = (function() {
             throw new Error('Player not ready');
         }
 
-        await SpotifyAuth.apiRequest(`/me/player/seek?device_id=${deviceId}&position_ms=${positionMs}`, {
+        // position_ms must be an integer
+        const position = Math.round(positionMs);
+        await SpotifyAuth.apiRequest(`/me/player/seek?device_id=${deviceId}&position_ms=${position}`, {
             method: 'PUT'
         });
     }
