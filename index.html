@@ -8,253 +8,90 @@
 </head>
 <body>
     <div class="container">
+        <!-- Header with status and settings -->
         <header>
-            <h1>Music + Video Sync Playground</h1>
-            <p class="subtitle">Explore music APIs and sync with videos</p>
+            <div class="header-top">
+                <h1>Music + Video Sync</h1>
+                <div class="header-controls">
+                    <div id="connection-status" class="connection-status disconnected">
+                        <span class="status-dot"></span>
+                        <span id="connection-text">Not connected</span>
+                    </div>
+                    <button id="settings-btn" class="btn btn-icon" title="Settings">
+                        <span class="gear-icon">&#9881;</span>
+                    </button>
+                </div>
+            </div>
             <p id="version-display" class="version-badge"></p>
         </header>
 
-        <!-- Provider Selection -->
-        <section class="card provider-section">
-            <h2>Choose Music Provider</h2>
-            <div class="provider-tabs">
-                <button class="provider-tab active" data-provider="spotify">
-                    <span class="provider-icon">&#9835;</span>
-                    Spotify
-                </button>
-                <button class="provider-tab" data-provider="apple">
-                    <span class="provider-icon">&#9835;</span>
-                    Apple Music
-                </button>
-            </div>
-        </section>
-
-        <!-- Configuration Section - Spotify -->
-        <section id="config-spotify" class="card config-section">
-            <h2>Spotify Configuration</h2>
-            <div class="config-form">
-                <div class="form-group">
-                    <label for="spotify-client-id">Spotify Client ID</label>
-                    <input type="text" id="spotify-client-id" placeholder="Enter your Spotify Client ID">
-                    <small>
-                        <a href="https://developer.spotify.com/dashboard" target="_blank">Get your Client ID from Spotify Developer Dashboard</a>
-                        <br>Set redirect URI to: <code id="redirect-uri"></code>
-                    </small>
+        <!-- Main Content -->
+        <main>
+            <!-- Video Section - Front and Center -->
+            <section class="video-section">
+                <div class="video-header">
+                    <h2>Video</h2>
+                    <div class="video-presets">
+                        <select id="video-preset-select">
+                            <option value="">Select a preset video...</option>
+                            <option value="https://www.youtube.com/watch?v=yt3cTswY38g">Cinematic Drone Footage</option>
+                        </select>
+                        <span class="or-divider">or</span>
+                        <input type="text" id="youtube-url" placeholder="Paste YouTube URL...">
+                        <button id="load-video-btn" class="btn btn-small btn-primary">Load</button>
+                    </div>
                 </div>
-                <div class="config-buttons">
-                    <button id="spotify-save-config" class="btn btn-secondary">Save Configuration</button>
-                    <button id="spotify-auth-btn" class="btn btn-primary" disabled>Connect to Spotify</button>
+                <div id="video-container" class="video-container">
+                    <div id="youtube-player"></div>
+                    <div id="video-placeholder" class="video-placeholder">
+                        <p>Select a preset video or paste a YouTube URL above</p>
+                    </div>
                 </div>
-            </div>
-            <div id="spotify-auth-status" class="status-badge hidden">
-                <span class="status-dot"></span>
-                <span id="spotify-user-info">Not connected</span>
-            </div>
-            <div class="provider-note">
-                <strong>Note:</strong> Spotify Web Playback requires a Premium account.
-            </div>
-        </section>
+            </section>
 
-        <!-- Configuration Section - Apple Music -->
-        <section id="config-apple" class="card config-section hidden">
-            <h2>Apple Music Configuration</h2>
-            <div class="config-form">
-                <div class="form-group">
-                    <label for="apple-dev-token">Developer Token (JWT)</label>
-                    <textarea id="apple-dev-token" rows="3" placeholder="Paste your Apple Music Developer Token here..."></textarea>
-                    <small>
-                        <a href="https://developer.apple.com/documentation/applemusicapi/getting_keys_and_creating_tokens" target="_blank">Learn how to create a Developer Token</a>
-                        <br>Requires an Apple Developer account ($99/year)
-                    </small>
+            <!-- Song Picker - Minimized -->
+            <section class="song-picker">
+                <div class="picker-header">
+                    <h3 id="current-song-display">No song selected</h3>
+                    <div class="picker-controls">
+                        <button id="random-song-btn" class="btn btn-small btn-secondary" title="Random song from top charts">
+                            &#127922; Random
+                        </button>
+                        <button id="toggle-search-btn" class="btn btn-small btn-secondary">
+                            &#128269; Search
+                        </button>
+                    </div>
                 </div>
-                <div class="config-buttons">
-                    <button id="apple-save-config" class="btn btn-secondary">Save Configuration</button>
-                    <button id="apple-auth-btn" class="btn btn-primary" disabled>Connect to Apple Music</button>
-                </div>
-            </div>
-            <div id="apple-auth-status" class="status-badge hidden">
-                <span class="status-dot"></span>
-                <span id="apple-user-info">Not connected</span>
-            </div>
-            <div class="provider-note">
-                <strong>Note:</strong> Apple Music requires an active subscription for full playback.
-                <br><strong>Limited Data:</strong> Apple Music API doesn't provide detailed audio analysis (BPM, key, energy, etc.) like Spotify does.
-            </div>
-        </section>
-
-        <!-- Main Playground Area -->
-        <div id="playground" class="hidden">
-            <div class="playground-grid">
-                <!-- Left Column: Music Controls -->
-                <section class="card music-section">
-                    <h2 id="music-section-title">Music</h2>
-
-                    <!-- Search -->
+                <div id="search-panel" class="search-panel hidden">
                     <div class="search-container">
                         <input type="text" id="search-input" placeholder="Search for a song...">
                         <button id="search-btn" class="btn btn-primary">Search</button>
                     </div>
-
-                    <!-- Search Results -->
                     <div id="search-results" class="search-results hidden"></div>
-
-                    <!-- Selected Track -->
-                    <div id="selected-track" class="selected-track hidden">
-                        <h3>Selected Track</h3>
-                        <div class="track-info">
-                            <img id="track-art" src="" alt="Album Art">
-                            <div class="track-details">
-                                <p id="track-name" class="track-name"></p>
-                                <p id="track-artist" class="track-artist"></p>
-                                <p id="track-album" class="track-album"></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Audio Features -->
-                    <div id="audio-features" class="audio-features hidden">
-                        <h3>Audio Analysis</h3>
-                        <div id="audio-features-note" class="audio-features-note hidden">
-                            Audio analysis data not available. Spotify deprecated this API for new apps in Nov 2024.
-                        </div>
-                        <div class="features-grid">
-                            <div class="feature">
-                                <span class="feature-label">BPM (Tempo)</span>
-                                <span id="feature-bpm" class="feature-value">--</span>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Key</span>
-                                <span id="feature-key" class="feature-value">--</span>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Energy</span>
-                                <span id="feature-energy" class="feature-value">--</span>
-                                <div class="feature-bar"><div id="bar-energy" class="bar-fill"></div></div>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Danceability</span>
-                                <span id="feature-dance" class="feature-value">--</span>
-                                <div class="feature-bar"><div id="bar-dance" class="bar-fill"></div></div>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Valence (Mood)</span>
-                                <span id="feature-valence" class="feature-value">--</span>
-                                <div class="feature-bar"><div id="bar-valence" class="bar-fill"></div></div>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Acousticness</span>
-                                <span id="feature-acoustic" class="feature-value">--</span>
-                                <div class="feature-bar"><div id="bar-acoustic" class="bar-fill"></div></div>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Instrumentalness</span>
-                                <span id="feature-instrumental" class="feature-value">--</span>
-                                <div class="feature-bar"><div id="bar-instrumental" class="bar-fill"></div></div>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Loudness</span>
-                                <span id="feature-loudness" class="feature-value">--</span>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Duration</span>
-                                <span id="feature-duration" class="feature-value">--</span>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-label">Time Signature</span>
-                                <span id="feature-time-sig" class="feature-value">--</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Player Status -->
-                    <div id="player-status" class="player-status">
-                        <div class="status-indicator">
-                            <span class="status-dot offline"></span>
-                            <span id="player-status-text">Player not ready</span>
-                        </div>
-                        <p id="premium-note" class="premium-note">Note: Playback requires a Premium subscription</p>
-                    </div>
-                </section>
-
-                <!-- Right Column: Video Controls -->
-                <section class="card video-section">
-                    <h2>Video Player</h2>
-
-                    <!-- YouTube URL Input -->
-                    <div class="url-input-container">
-                        <input type="text" id="youtube-url" placeholder="Paste YouTube URL here...">
-                        <button id="load-video-btn" class="btn btn-primary">Load Video</button>
-                    </div>
-
-                    <!-- Video Player -->
-                    <div id="video-container" class="video-container">
-                        <div id="youtube-player"></div>
-                        <div id="video-placeholder" class="video-placeholder">
-                            <p>Enter a YouTube URL above to load a video</p>
-                        </div>
-                    </div>
-
-                    <!-- Video Speed Controls -->
-                    <div id="speed-controls" class="speed-controls hidden">
-                        <h3>Playback Speed</h3>
-                        <div class="speed-buttons">
-                            <button class="btn btn-small speed-btn" data-speed="0.25">0.25x</button>
-                            <button class="btn btn-small speed-btn" data-speed="0.5">0.5x</button>
-                            <button class="btn btn-small speed-btn" data-speed="0.75">0.75x</button>
-                            <button class="btn btn-small speed-btn active" data-speed="1">1x</button>
-                            <button class="btn btn-small speed-btn" data-speed="1.25">1.25x</button>
-                            <button class="btn btn-small speed-btn" data-speed="1.5">1.5x</button>
-                            <button class="btn btn-small speed-btn" data-speed="2">2x</button>
-                        </div>
-                        <div class="custom-speed">
-                            <label for="custom-speed-input">Custom:</label>
-                            <input type="number" id="custom-speed-input" min="0.1" max="2" step="0.05" value="1">
-                            <button id="apply-custom-speed" class="btn btn-small">Apply</button>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Universal Sync Controls -->
-            <section class="card sync-controls">
-                <h2>Synchronized Playback</h2>
-                <div class="sync-status">
-                    <div class="sync-item">
-                        <span id="music-sync-label" class="sync-label">Music:</span>
-                        <span id="music-sync-status" class="sync-state">Not ready</span>
-                    </div>
-                    <div class="sync-item">
-                        <span class="sync-label">Video:</span>
-                        <span id="video-sync-status" class="sync-state">Not loaded</span>
-                    </div>
                 </div>
+                <div id="selected-track-mini" class="selected-track-mini hidden">
+                    <img id="track-art-mini" src="" alt="">
+                    <div class="track-info-mini">
+                        <span id="track-name-mini" class="track-name"></span>
+                        <span id="track-artist-mini" class="track-artist"></span>
+                    </div>
+                    <button id="clear-track-btn" class="btn btn-icon btn-small" title="Clear selection">&times;</button>
+                </div>
+            </section>
 
-                <div class="playback-controls">
-                    <button id="sync-play" class="btn btn-large btn-success" disabled>
-                        <span class="icon">&#9654;</span> Play Both
+            <!-- Main Playback Controls -->
+            <section class="playback-section">
+                <div class="main-controls">
+                    <button id="main-play-btn" class="btn btn-play" disabled>
+                        <span class="play-icon">&#9654;</span>
+                        <span class="btn-label">Play</span>
                     </button>
-                    <button id="sync-pause" class="btn btn-large btn-warning" disabled>
-                        <span class="icon">&#10074;&#10074;</span> Pause Both
-                    </button>
-                    <button id="sync-stop" class="btn btn-large btn-danger" disabled>
-                        <span class="icon">&#9632;</span> Stop & Reset
+                    <button id="stop-reset-btn" class="btn btn-stop" disabled>
+                        <span class="stop-icon">&#9632;</span>
+                        <span class="btn-label">Stop</span>
                     </button>
                 </div>
-
-                <!-- Offset Controls -->
-                <div class="offset-controls">
-                    <h3>Timing Offset</h3>
-                    <p class="help-text">Adjust if music and video are out of sync</p>
-                    <div class="offset-input">
-                        <button id="offset-minus" class="btn btn-small">-0.5s</button>
-                        <span id="offset-value">0.0s</span>
-                        <button id="offset-plus" class="btn btn-small">+0.5s</button>
-                    </div>
-                    <small>Positive = music starts later, Negative = video starts later</small>
-                </div>
-
-                <!-- Progress Display -->
-                <div class="progress-display">
+                <div class="progress-section">
                     <div class="progress-bar-container">
                         <div id="progress-bar" class="progress-bar"></div>
                     </div>
@@ -265,21 +102,146 @@
                 </div>
             </section>
 
-            <!-- API Explorer Section -->
-            <section class="card api-explorer">
-                <h2>API Explorer</h2>
+            <!-- Sync Tools Playground -->
+            <section class="playground-section">
+                <h2>Sync Tools</h2>
+
+                <!-- Timing Offset -->
+                <div class="tool-group">
+                    <h4>Timing Offset</h4>
+                    <p class="tool-desc">Adjust if music and video are out of sync</p>
+                    <div class="offset-controls">
+                        <button id="offset-minus" class="btn btn-small">-0.5s</button>
+                        <span id="offset-value" class="offset-display">0.0s</span>
+                        <button id="offset-plus" class="btn btn-small">+0.5s</button>
+                    </div>
+                </div>
+
+                <!-- Video Speed -->
+                <div class="tool-group">
+                    <h4>Video Speed</h4>
+                    <p class="tool-desc">Speed up or slow down the video to match the music</p>
+                    <div class="speed-controls">
+                        <div class="speed-buttons">
+                            <button class="btn btn-small speed-btn" data-speed="0.5">0.5x</button>
+                            <button class="btn btn-small speed-btn" data-speed="0.75">0.75x</button>
+                            <button class="btn btn-small speed-btn active" data-speed="1">1x</button>
+                            <button class="btn btn-small speed-btn" data-speed="1.25">1.25x</button>
+                            <button class="btn btn-small speed-btn" data-speed="1.5">1.5x</button>
+                            <button class="btn btn-small speed-btn" data-speed="2">2x</button>
+                        </div>
+                        <div class="custom-speed">
+                            <input type="number" id="custom-speed-input" min="0.25" max="2" step="0.05" value="1">
+                            <button id="apply-custom-speed" class="btn btn-small">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BPM Detection (Future) -->
+                <div class="tool-group">
+                    <h4>BPM Detection</h4>
+                    <p class="tool-desc">Auto-detect music tempo</p>
+                    <div class="bpm-display">
+                        <span id="detected-bpm" class="bpm-value">--</span>
+                        <span class="bpm-label">BPM</span>
+                        <button id="detect-bpm-btn" class="btn btn-small btn-secondary" disabled>Detect</button>
+                    </div>
+                    <p class="tool-note">BPM detection coming soon</p>
+                </div>
+
+                <!-- Fade Controls -->
+                <div class="tool-group">
+                    <h4>Music Fade</h4>
+                    <p class="tool-desc">Fade out music when video ends</p>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="fade-on-end" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Auto-fade when video ends</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- API Explorer (Collapsed) -->
+            <section class="api-explorer">
                 <details>
-                    <summary>View Raw API Data</summary>
+                    <summary>API Explorer</summary>
                     <div class="api-data">
                         <h4>Track Data</h4>
                         <pre id="raw-track-data">No track selected</pre>
                         <h4>Audio Features</h4>
                         <pre id="raw-audio-features">No track selected</pre>
-                        <h4>Audio Analysis (Summary)</h4>
-                        <pre id="raw-audio-analysis">No track selected</pre>
                     </div>
                 </details>
             </section>
+        </main>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button id="close-settings" class="btn btn-icon">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Provider Selection -->
+                    <div class="settings-group">
+                        <h3>Music Provider</h3>
+                        <div class="provider-tabs">
+                            <button class="provider-tab active" data-provider="spotify">
+                                Spotify
+                            </button>
+                            <button class="provider-tab" data-provider="apple">
+                                Apple Music
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Spotify Config -->
+                    <div id="config-spotify" class="settings-group config-section">
+                        <h3>Spotify Configuration</h3>
+                        <div class="form-group">
+                            <label for="spotify-client-id">Client ID</label>
+                            <input type="text" id="spotify-client-id" placeholder="Enter your Spotify Client ID">
+                            <small>
+                                <a href="https://developer.spotify.com/dashboard" target="_blank">Get from Spotify Developer Dashboard</a>
+                                <br>Redirect URI: <code id="redirect-uri"></code>
+                            </small>
+                        </div>
+                        <div class="config-buttons">
+                            <button id="spotify-save-config" class="btn btn-secondary">Save</button>
+                            <button id="spotify-auth-btn" class="btn btn-primary" disabled>Connect</button>
+                        </div>
+                        <div id="spotify-auth-status" class="auth-status hidden">
+                            <span class="status-dot online"></span>
+                            <span id="spotify-user-info">Connected</span>
+                            <button id="spotify-disconnect" class="btn btn-small btn-danger">Disconnect</button>
+                        </div>
+                    </div>
+
+                    <!-- Apple Music Config -->
+                    <div id="config-apple" class="settings-group config-section hidden">
+                        <h3>Apple Music Configuration</h3>
+                        <div class="form-group">
+                            <label for="apple-dev-token">Developer Token (JWT)</label>
+                            <textarea id="apple-dev-token" rows="3" placeholder="Paste your Apple Music Developer Token..."></textarea>
+                            <small>
+                                <a href="https://developer.apple.com/documentation/applemusicapi/getting_keys_and_creating_tokens" target="_blank">How to create a Developer Token</a>
+                                <br>Requires Apple Developer account ($99/year)
+                            </small>
+                        </div>
+                        <div class="config-buttons">
+                            <button id="apple-save-config" class="btn btn-secondary">Save</button>
+                            <button id="apple-auth-btn" class="btn btn-primary" disabled>Connect</button>
+                        </div>
+                        <div id="apple-auth-status" class="auth-status hidden">
+                            <span class="status-dot online"></span>
+                            <span id="apple-user-info">Connected</span>
+                            <button id="apple-disconnect" class="btn btn-small btn-danger">Disconnect</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

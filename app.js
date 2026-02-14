@@ -1,162 +1,141 @@
 /**
- * Main Application
- * Supports both Spotify and Apple Music providers
+ * Music + Video Sync Playground
+ * Main Application - Refactored UI
  */
 
 (function() {
-    // Current provider state
-    let currentProvider = 'spotify'; // 'spotify' or 'apple'
+    // State
+    let currentProvider = 'spotify';
     let isAuthenticated = false;
+    let isPlaying = false;
+    let selectedTrack = null;
+    let searchResultsCache = {};
+    let fadeOnEnd = true;
 
-    // Provider-specific player references
-    const providers = {
-        spotify: {
-            auth: null, // SpotifyAuth
-            player: null, // SpotifyPlayer
-            name: 'Spotify'
-        },
-        apple: {
-            auth: null, // AppleMusicAuth
-            player: null, // AppleMusicPlayer
-            name: 'Apple Music'
-        }
-    };
+    // Spotify Top 50 Global playlist ID for random songs
+    const TOP_PLAYLIST_ID = '37i9dQZEVXbMDoHDwVN2tF';
 
-    // Get current player module
-    function getCurrentPlayer() {
-        return currentProvider === 'spotify' ? SpotifyPlayer : AppleMusicPlayer;
-    }
+    // DOM Elements - Header
+    const connectionStatus = document.getElementById('connection-status');
+    const connectionText = document.getElementById('connection-text');
+    const settingsBtn = document.getElementById('settings-btn');
+    const versionDisplay = document.getElementById('version-display');
 
-    // Get current auth module
-    function getCurrentAuth() {
-        return currentProvider === 'spotify' ? SpotifyAuth : AppleMusicAuth;
-    }
-
-    // DOM Elements - Provider Tabs
+    // DOM Elements - Settings Modal
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings');
     const providerTabs = document.querySelectorAll('.provider-tab');
-
-    // DOM Elements - Spotify Config
     const configSpotify = document.getElementById('config-spotify');
+    const configApple = document.getElementById('config-apple');
+    const redirectUriDisplay = document.getElementById('redirect-uri');
+
+    // Spotify config elements
     const spotifyClientIdInput = document.getElementById('spotify-client-id');
     const spotifySaveConfigBtn = document.getElementById('spotify-save-config');
     const spotifyAuthBtn = document.getElementById('spotify-auth-btn');
     const spotifyAuthStatus = document.getElementById('spotify-auth-status');
     const spotifyUserInfo = document.getElementById('spotify-user-info');
-    const redirectUriDisplay = document.getElementById('redirect-uri');
+    const spotifyDisconnectBtn = document.getElementById('spotify-disconnect');
 
-    // DOM Elements - Apple Config
-    const configApple = document.getElementById('config-apple');
+    // Apple config elements
     const appleDevTokenInput = document.getElementById('apple-dev-token');
     const appleSaveConfigBtn = document.getElementById('apple-save-config');
     const appleAuthBtn = document.getElementById('apple-auth-btn');
     const appleAuthStatus = document.getElementById('apple-auth-status');
     const appleUserInfo = document.getElementById('apple-user-info');
+    const appleDisconnectBtn = document.getElementById('apple-disconnect');
 
-    // DOM Elements - Playground
-    const playground = document.getElementById('playground');
-    const musicSectionTitle = document.getElementById('music-section-title');
-    const audioFeaturesNote = document.getElementById('audio-features-note');
-    const premiumNote = document.getElementById('premium-note');
-    const musicSyncLabel = document.getElementById('music-sync-label');
-
-    // DOM Elements - Search
-    const searchInput = document.getElementById('search-input');
-    const searchBtn = document.getElementById('search-btn');
-    const searchResults = document.getElementById('search-results');
-
-    // DOM Elements - Selected Track
-    const selectedTrackEl = document.getElementById('selected-track');
-    const trackArt = document.getElementById('track-art');
-    const trackName = document.getElementById('track-name');
-    const trackArtist = document.getElementById('track-artist');
-    const trackAlbum = document.getElementById('track-album');
-
-    // DOM Elements - Audio Features
-    const audioFeaturesEl = document.getElementById('audio-features');
-
-    // DOM Elements - Player Status
-    const playerStatusText = document.getElementById('player-status-text');
-
-    // DOM Elements - YouTube
+    // DOM Elements - Video
+    const videoPresetSelect = document.getElementById('video-preset-select');
     const youtubeUrlInput = document.getElementById('youtube-url');
     const loadVideoBtn = document.getElementById('load-video-btn');
     const videoPlaceholder = document.getElementById('video-placeholder');
-    const speedControls = document.getElementById('speed-controls');
-    const speedButtons = document.querySelectorAll('.speed-btn');
-    const customSpeedInput = document.getElementById('custom-speed-input');
-    const applyCustomSpeedBtn = document.getElementById('apply-custom-speed');
 
-    // DOM Elements - Sync Controls
-    const syncPlayBtn = document.getElementById('sync-play');
-    const syncPauseBtn = document.getElementById('sync-pause');
-    const syncStopBtn = document.getElementById('sync-stop');
-    const musicSyncStatus = document.getElementById('music-sync-status');
-    const videoSyncStatus = document.getElementById('video-sync-status');
-    const offsetValue = document.getElementById('offset-value');
-    const offsetMinusBtn = document.getElementById('offset-minus');
-    const offsetPlusBtn = document.getElementById('offset-plus');
+    // DOM Elements - Song Picker
+    const currentSongDisplay = document.getElementById('current-song-display');
+    const randomSongBtn = document.getElementById('random-song-btn');
+    const toggleSearchBtn = document.getElementById('toggle-search-btn');
+    const searchPanel = document.getElementById('search-panel');
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const searchResults = document.getElementById('search-results');
+    const selectedTrackMini = document.getElementById('selected-track-mini');
+    const trackArtMini = document.getElementById('track-art-mini');
+    const trackNameMini = document.getElementById('track-name-mini');
+    const trackArtistMini = document.getElementById('track-artist-mini');
+    const clearTrackBtn = document.getElementById('clear-track-btn');
 
-    // DOM Elements - Progress
+    // DOM Elements - Playback
+    const mainPlayBtn = document.getElementById('main-play-btn');
+    const stopResetBtn = document.getElementById('stop-reset-btn');
     const progressBar = document.getElementById('progress-bar');
     const currentTimeEl = document.getElementById('current-time');
     const totalTimeEl = document.getElementById('total-time');
 
+    // DOM Elements - Tools
+    const offsetMinusBtn = document.getElementById('offset-minus');
+    const offsetPlusBtn = document.getElementById('offset-plus');
+    const offsetValue = document.getElementById('offset-value');
+    const speedButtons = document.querySelectorAll('.speed-btn');
+    const customSpeedInput = document.getElementById('custom-speed-input');
+    const applyCustomSpeedBtn = document.getElementById('apply-custom-speed');
+    const fadeOnEndCheckbox = document.getElementById('fade-on-end');
+
     // DOM Elements - API Explorer
     const rawTrackData = document.getElementById('raw-track-data');
     const rawAudioFeatures = document.getElementById('raw-audio-features');
-    const rawAudioAnalysis = document.getElementById('raw-audio-analysis');
 
-    // Cache for search results (to avoid re-fetching)
-    let searchResultsCache = {};
+    // Get current player
+    function getCurrentPlayer() {
+        return currentProvider === 'spotify' ? SpotifyPlayer : AppleMusicPlayer;
+    }
 
-    // Initialize application
+    // Initialize
     async function init() {
         // Display version
-        const versionDisplay = document.getElementById('version-display');
         if (versionDisplay && typeof VERSION !== 'undefined') {
             versionDisplay.textContent = VERSION.getDisplayString();
         }
 
         // Display redirect URI
-        redirectUriDisplay.textContent = window.location.origin + window.location.pathname;
-
-        // Load saved configurations
-        loadSavedConfigs();
-
-        // Check for Spotify OAuth callback
-        const hasSpotifyCallback = await handleSpotifyAuthCallback();
-
-        // If not a callback, check for existing Spotify session
-        if (!hasSpotifyCallback) {
-            const savedSpotifyClientId = localStorage.getItem('spotify_client_id');
-            if (savedSpotifyClientId) {
-                spotifyClientIdInput.value = savedSpotifyClientId;
-                spotifyAuthBtn.disabled = false;
-                const hasValidSession = SpotifyAuth.init(savedSpotifyClientId);
-                if (hasValidSession) {
-                    await completeSpotifyAuth();
-                }
-            }
+        if (redirectUriDisplay) {
+            redirectUriDisplay.textContent = window.location.origin + window.location.pathname;
         }
 
-        // Set up event listeners
+        // Load saved config
+        loadSavedConfig();
+
+        // Check for OAuth callback
+        await handleAuthCallback();
+
+        // Setup event listeners
         setupEventListeners();
 
-        // Initialize YouTube player
+        // Initialize YouTube
         try {
             await YouTubePlayer.init('youtube-player');
-            console.log('YouTube player initialized');
-        } catch (error) {
-            console.error('Failed to initialize YouTube player:', error);
+            YouTubePlayer.onStateChange(handleVideoStateChange);
+        } catch (e) {
+            console.error('YouTube init failed:', e);
         }
 
         // Initialize sync controller
         SyncController.init();
-        setupSyncListeners();
+        SyncController.onProgress(handleProgress);
+
+        // Show settings if not connected
+        if (!isAuthenticated) {
+            showSettings();
+        }
+
+        updateUI();
     }
 
-    // Load saved configurations
-    function loadSavedConfigs() {
+    // Load saved configuration
+    function loadSavedConfig() {
+        const savedProvider = localStorage.getItem('preferred_provider') || 'spotify';
+        switchProvider(savedProvider);
+
         // Spotify
         const savedSpotifyId = localStorage.getItem('spotify_client_id');
         if (savedSpotifyId) {
@@ -164,236 +143,148 @@
             spotifyAuthBtn.disabled = false;
         }
 
-        // Apple Music
+        // Apple
         const savedAppleToken = localStorage.getItem('apple_music_token');
         if (savedAppleToken) {
             appleDevTokenInput.value = savedAppleToken;
             appleAuthBtn.disabled = false;
         }
-
-        // Saved provider preference
-        const savedProvider = localStorage.getItem('preferred_provider');
-        if (savedProvider && (savedProvider === 'spotify' || savedProvider === 'apple')) {
-            switchProvider(savedProvider);
-        }
     }
 
-    // Switch between providers
-    function switchProvider(provider) {
-        currentProvider = provider;
-        localStorage.setItem('preferred_provider', provider);
-
-        // Update tabs
-        providerTabs.forEach(tab => {
-            tab.classList.toggle('active', tab.dataset.provider === provider);
-        });
-
-        // Show/hide config sections
-        configSpotify.classList.toggle('hidden', provider !== 'spotify');
-        configApple.classList.toggle('hidden', provider !== 'apple');
-
-        // Update UI labels
-        const providerName = provider === 'spotify' ? 'Spotify' : 'Apple Music';
-        musicSectionTitle.textContent = providerName;
-        musicSyncLabel.textContent = `${providerName}:`;
-
-        // Update premium note
-        if (provider === 'apple') {
-            premiumNote.textContent = 'Note: Playback requires an Apple Music subscription';
-            audioFeaturesNote.classList.remove('hidden');
-        } else {
-            premiumNote.textContent = 'Note: Playback requires Spotify Premium';
-            audioFeaturesNote.classList.add('hidden');
-        }
-
-        // Update sync controller with current provider
-        SyncController.setProvider(provider);
-
-        // Reset UI state when switching
-        resetPlaygroundUI();
-
-        // Check authentication status for new provider
-        updateAuthStatus();
-    }
-
-    // Reset playground UI when switching providers
-    function resetPlaygroundUI() {
-        selectedTrackEl.classList.add('hidden');
-        audioFeaturesEl.classList.add('hidden');
-        searchResults.classList.add('hidden');
-        searchResults.innerHTML = '';
-        rawTrackData.textContent = 'No track selected';
-        rawAudioFeatures.textContent = 'No track selected';
-        rawAudioAnalysis.textContent = 'No track selected';
-        SyncController.setTrack(null);
-    }
-
-    // Update authentication status display
-    function updateAuthStatus() {
-        if (currentProvider === 'spotify') {
-            isAuthenticated = SpotifyAuth.isAuthenticated();
-            playground.classList.toggle('hidden', !isAuthenticated);
-        } else {
-            isAuthenticated = AppleMusicAuth.isAuthorized();
-            playground.classList.toggle('hidden', !isAuthenticated);
-        }
-        updateSyncControls();
-    }
-
-    // Handle Spotify OAuth callback
-    async function handleSpotifyAuthCallback() {
+    // Handle OAuth callback
+    async function handleAuthCallback() {
         try {
             const handled = await SpotifyAuth.handleCallback();
             if (handled) {
                 currentProvider = 'spotify';
-                switchProvider('spotify');
                 await completeSpotifyAuth();
-                return true;
             }
-        } catch (error) {
-            console.error('Spotify auth callback error:', error);
-            showError('Spotify authentication failed: ' + error.message);
+        } catch (e) {
+            console.error('Auth callback error:', e);
         }
-        return false;
+
+        // Check existing sessions
+        const savedSpotifyId = localStorage.getItem('spotify_client_id');
+        if (savedSpotifyId && SpotifyAuth.init(savedSpotifyId)) {
+            await completeSpotifyAuth();
+        }
     }
 
     // Complete Spotify authentication
     async function completeSpotifyAuth() {
         try {
             const profile = await SpotifyAuth.getUserProfile();
-            spotifyUserInfo.textContent = `Connected as ${profile.display_name || profile.id}`;
+            spotifyUserInfo.textContent = profile.display_name || profile.id;
             spotifyAuthStatus.classList.remove('hidden');
-            spotifyAuthStatus.querySelector('.status-dot').classList.add('online');
-            spotifyAuthBtn.textContent = 'Disconnect';
-            spotifyAuthBtn.classList.remove('btn-primary');
-            spotifyAuthBtn.classList.add('btn-danger');
+            spotifyAuthBtn.classList.add('hidden');
+            spotifySaveConfigBtn.classList.add('hidden');
 
-            playground.classList.remove('hidden');
             isAuthenticated = true;
-
             await initSpotifyPlayer();
-        } catch (error) {
-            console.error('Error completing Spotify auth:', error);
-            showError('Failed to complete Spotify authentication: ' + error.message);
+            updateConnectionStatus();
+            hideSettings();
+        } catch (e) {
+            console.error('Spotify auth error:', e);
         }
     }
 
-    // Initialize Spotify Player
+    // Initialize Spotify player
     async function initSpotifyPlayer() {
         try {
-            playerStatusText.textContent = 'Initializing Spotify player...';
-
-            SpotifyPlayer.onReady((deviceId) => {
-                playerStatusText.textContent = 'Player ready (Premium required for playback)';
-                document.querySelector('#player-status .status-dot').classList.remove('offline');
-                document.querySelector('#player-status .status-dot').classList.add('online');
-                updateSyncControls();
+            SpotifyPlayer.onReady(() => {
+                updateUI();
             });
-
-            SpotifyPlayer.onError((type, message) => {
-                playerStatusText.textContent = `Error: ${message}`;
-                if (type === 'account') {
-                    playerStatusText.textContent = 'Spotify Premium required for playback';
-                }
+            SpotifyPlayer.onError((type, msg) => {
+                console.error('Spotify error:', type, msg);
             });
-
             await SpotifyPlayer.init(() => SpotifyAuth.getAccessToken());
-        } catch (error) {
-            console.error('Failed to initialize Spotify player:', error);
-            playerStatusText.textContent = 'Failed to initialize player';
+        } catch (e) {
+            console.error('Spotify player init error:', e);
         }
     }
 
-    // Complete Apple Music authentication
-    async function completeAppleAuth() {
-        try {
-            await AppleMusicAuth.authorize();
-            appleUserInfo.textContent = 'Connected to Apple Music';
-            appleAuthStatus.classList.remove('hidden');
-            appleAuthStatus.querySelector('.status-dot').classList.add('online');
-            appleAuthBtn.textContent = 'Disconnect';
-            appleAuthBtn.classList.remove('btn-primary');
-            appleAuthBtn.classList.add('btn-danger');
+    // Switch provider
+    function switchProvider(provider) {
+        currentProvider = provider;
+        localStorage.setItem('preferred_provider', provider);
 
-            playground.classList.remove('hidden');
-            isAuthenticated = true;
+        providerTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.provider === provider);
+        });
 
-            await initAppleMusicPlayer();
-        } catch (error) {
-            console.error('Error completing Apple Music auth:', error);
-            showError('Failed to complete Apple Music authentication: ' + error.message);
+        configSpotify.classList.toggle('hidden', provider !== 'spotify');
+        configApple.classList.toggle('hidden', provider !== 'apple');
+
+        SyncController.setProvider(provider);
+        updateConnectionStatus();
+    }
+
+    // Update connection status
+    function updateConnectionStatus() {
+        const connected = currentProvider === 'spotify'
+            ? SpotifyAuth.isAuthenticated()
+            : AppleMusicAuth.isAuthorized();
+
+        isAuthenticated = connected;
+        connectionStatus.classList.toggle('connected', connected);
+        connectionStatus.classList.toggle('disconnected', !connected);
+
+        if (connected) {
+            connectionText.textContent = currentProvider === 'spotify' ? 'Spotify' : 'Apple Music';
+        } else {
+            connectionText.textContent = 'Not connected';
         }
     }
 
-    // Initialize Apple Music Player
-    async function initAppleMusicPlayer() {
-        try {
-            playerStatusText.textContent = 'Initializing Apple Music player...';
-
-            AppleMusicPlayer.onReady(() => {
-                playerStatusText.textContent = 'Player ready';
-                document.querySelector('#player-status .status-dot').classList.remove('offline');
-                document.querySelector('#player-status .status-dot').classList.add('online');
-                updateSyncControls();
-            });
-
-            AppleMusicPlayer.onError((message) => {
-                playerStatusText.textContent = `Error: ${message}`;
-            });
-
-            await AppleMusicPlayer.init();
-        } catch (error) {
-            console.error('Failed to initialize Apple Music player:', error);
-            playerStatusText.textContent = 'Failed to initialize player';
-        }
+    // Show/hide settings modal
+    function showSettings() {
+        settingsModal.classList.remove('hidden');
     }
 
-    // Set up event listeners
+    function hideSettings() {
+        settingsModal.classList.add('hidden');
+    }
+
+    // Setup event listeners
     function setupEventListeners() {
+        // Settings
+        settingsBtn.addEventListener('click', showSettings);
+        closeSettingsBtn.addEventListener('click', hideSettings);
+        settingsModal.querySelector('.modal-backdrop').addEventListener('click', hideSettings);
+
         // Provider tabs
         providerTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                switchProvider(tab.dataset.provider);
-            });
+            tab.addEventListener('click', () => switchProvider(tab.dataset.provider));
         });
 
         // Spotify config
         spotifySaveConfigBtn.addEventListener('click', () => {
-            const clientId = spotifyClientIdInput.value.trim();
-            if (clientId) {
-                localStorage.setItem('spotify_client_id', clientId);
+            const id = spotifyClientIdInput.value.trim();
+            if (id) {
+                localStorage.setItem('spotify_client_id', id);
                 spotifyAuthBtn.disabled = false;
-                showSuccess('Spotify configuration saved!');
-            } else {
-                showError('Please enter a Client ID');
             }
         });
 
-        spotifyAuthBtn.addEventListener('click', async () => {
-            if (SpotifyAuth.isAuthenticated()) {
-                SpotifyAuth.logout();
-                SpotifyPlayer.disconnect();
-                playground.classList.add('hidden');
-                spotifyAuthStatus.classList.add('hidden');
-                spotifyAuthBtn.textContent = 'Connect to Spotify';
-                spotifyAuthBtn.classList.remove('btn-danger');
-                spotifyAuthBtn.classList.add('btn-primary');
-                isAuthenticated = false;
-                playerStatusText.textContent = 'Player not ready';
-                document.querySelector('#player-status .status-dot').classList.remove('online');
-                document.querySelector('#player-status .status-dot').classList.add('offline');
-            } else {
-                const clientId = spotifyClientIdInput.value.trim();
-                if (!clientId) {
-                    showError('Please enter a Client ID first');
-                    return;
-                }
-                SpotifyAuth.init(clientId);
+        spotifyAuthBtn.addEventListener('click', () => {
+            const id = spotifyClientIdInput.value.trim();
+            if (id) {
+                SpotifyAuth.init(id);
                 SpotifyAuth.authorize();
             }
         });
 
-        // Apple Music config
+        spotifyDisconnectBtn.addEventListener('click', () => {
+            SpotifyAuth.logout();
+            SpotifyPlayer.disconnect();
+            spotifyAuthStatus.classList.add('hidden');
+            spotifyAuthBtn.classList.remove('hidden');
+            spotifySaveConfigBtn.classList.remove('hidden');
+            isAuthenticated = false;
+            updateConnectionStatus();
+        });
+
+        // Apple config
         appleSaveConfigBtn.addEventListener('click', async () => {
             const token = appleDevTokenInput.value.trim();
             if (token) {
@@ -401,366 +292,345 @@
                     await AppleMusicAuth.init(token);
                     localStorage.setItem('apple_music_token', token);
                     appleAuthBtn.disabled = false;
-                    showSuccess('Apple Music configuration saved!');
-                } catch (error) {
-                    showError('Invalid token: ' + error.message);
+                } catch (e) {
+                    alert('Invalid token: ' + e.message);
                 }
-            } else {
-                showError('Please enter a Developer Token');
             }
         });
 
         appleAuthBtn.addEventListener('click', async () => {
-            if (AppleMusicAuth.isAuthorized()) {
-                await AppleMusicAuth.logout();
-                AppleMusicPlayer.disconnect();
-                playground.classList.add('hidden');
-                appleAuthStatus.classList.add('hidden');
-                appleAuthBtn.textContent = 'Connect to Apple Music';
-                appleAuthBtn.classList.remove('btn-danger');
-                appleAuthBtn.classList.add('btn-primary');
-                isAuthenticated = false;
-                playerStatusText.textContent = 'Player not ready';
-                document.querySelector('#player-status .status-dot').classList.remove('online');
-                document.querySelector('#player-status .status-dot').classList.add('offline');
-            } else {
-                const token = appleDevTokenInput.value.trim();
-                if (!token) {
-                    showError('Please save your Developer Token first');
-                    return;
-                }
-                if (!AppleMusicAuth.getIsConfigured()) {
-                    await AppleMusicAuth.init(token);
-                }
-                await completeAppleAuth();
+            try {
+                await AppleMusicAuth.authorize();
+                appleUserInfo.textContent = 'Connected';
+                appleAuthStatus.classList.remove('hidden');
+                appleAuthBtn.classList.add('hidden');
+                appleSaveConfigBtn.classList.add('hidden');
+                isAuthenticated = true;
+                await AppleMusicPlayer.init();
+                updateConnectionStatus();
+                hideSettings();
+            } catch (e) {
+                alert('Auth failed: ' + e.message);
             }
         });
 
-        // Search
+        appleDisconnectBtn.addEventListener('click', async () => {
+            await AppleMusicAuth.logout();
+            AppleMusicPlayer.disconnect();
+            appleAuthStatus.classList.add('hidden');
+            appleAuthBtn.classList.remove('hidden');
+            appleSaveConfigBtn.classList.remove('hidden');
+            isAuthenticated = false;
+            updateConnectionStatus();
+        });
+
+        // Video
+        videoPresetSelect.addEventListener('change', () => {
+            const url = videoPresetSelect.value;
+            if (url) {
+                youtubeUrlInput.value = url;
+                loadVideo(url);
+            }
+        });
+
+        loadVideoBtn.addEventListener('click', () => loadVideo(youtubeUrlInput.value));
+        youtubeUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loadVideo(youtubeUrlInput.value);
+        });
+
+        // Song picker
+        toggleSearchBtn.addEventListener('click', () => {
+            searchPanel.classList.toggle('hidden');
+        });
+
         searchBtn.addEventListener('click', performSearch);
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') performSearch();
         });
 
-        // Load video
-        loadVideoBtn.addEventListener('click', loadVideo);
-        youtubeUrlInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') loadVideo();
-        });
+        randomSongBtn.addEventListener('click', loadRandomSong);
+        clearTrackBtn.addEventListener('click', clearSelectedTrack);
 
-        // Speed controls
+        // Playback
+        mainPlayBtn.addEventListener('click', togglePlayback);
+        stopResetBtn.addEventListener('click', stopAndReset);
+
+        // Tools
+        offsetMinusBtn.addEventListener('click', () => adjustOffset(-500));
+        offsetPlusBtn.addEventListener('click', () => adjustOffset(500));
+
         speedButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const speed = parseFloat(btn.dataset.speed);
                 setVideoSpeed(speed);
-                updateSpeedButtons(speed);
             });
         });
 
         applyCustomSpeedBtn.addEventListener('click', () => {
             const speed = parseFloat(customSpeedInput.value);
-            if (speed >= 0.1 && speed <= 2) {
+            if (speed >= 0.25 && speed <= 2) {
                 setVideoSpeed(speed);
-                updateSpeedButtons(speed);
             }
         });
 
-        // Sync controls
-        syncPlayBtn.addEventListener('click', async () => {
-            try {
-                await SyncController.playBoth();
-                updatePlaybackButtons(true);
-            } catch (error) {
-                showError('Failed to start sync playback: ' + error.message);
-            }
-        });
-
-        syncPauseBtn.addEventListener('click', async () => {
-            await SyncController.pauseBoth();
-            updatePlaybackButtons(false);
-        });
-
-        syncStopBtn.addEventListener('click', async () => {
-            await SyncController.stopBoth();
-            updatePlaybackButtons(false);
-            progressBar.style.width = '0%';
-            currentTimeEl.textContent = '0:00';
-        });
-
-        // Offset controls
-        offsetMinusBtn.addEventListener('click', () => {
-            const current = SyncController.getOffset();
-            SyncController.setOffset(current - 500);
-            offsetValue.textContent = `${(SyncController.getOffset() / 1000).toFixed(1)}s`;
-        });
-
-        offsetPlusBtn.addEventListener('click', () => {
-            const current = SyncController.getOffset();
-            SyncController.setOffset(current + 500);
-            offsetValue.textContent = `${(SyncController.getOffset() / 1000).toFixed(1)}s`;
+        fadeOnEndCheckbox.addEventListener('change', () => {
+            fadeOnEnd = fadeOnEndCheckbox.checked;
         });
     }
 
-    // Set up sync listeners
-    function setupSyncListeners() {
-        SyncController.onSyncStateChange((state) => {
-            musicSyncStatus.textContent = state.musicReady ? 'Ready' : 'Not ready';
-            musicSyncStatus.className = `sync-state ${state.musicReady ? 'ready' : ''}`;
-
-            videoSyncStatus.textContent = state.videoReady ? 'Ready' : 'Not loaded';
-            videoSyncStatus.className = `sync-state ${state.videoReady ? 'ready' : ''}`;
-
-            updateSyncControls();
-        });
-
-        SyncController.onProgress((progress) => {
-            const percent = (progress.currentTime / progress.duration) * 100;
-            progressBar.style.width = `${Math.min(percent, 100)}%`;
-            currentTimeEl.textContent = formatTime(progress.currentTime);
-            totalTimeEl.textContent = formatTime(progress.duration);
-        });
+    // Load video
+    function loadVideo(url) {
+        if (!url) return;
+        try {
+            YouTubePlayer.loadVideo(url, true);
+            videoPlaceholder.classList.add('hidden');
+            SyncController.setVideoLoaded(true);
+            updateUI();
+        } catch (e) {
+            alert('Failed to load video: ' + e.message);
+        }
     }
 
     // Perform search
     async function performSearch() {
         const query = searchInput.value.trim();
-        if (!query) return;
+        if (!query || !isAuthenticated) return;
 
-        const player = getCurrentPlayer();
         searchResults.innerHTML = '<p class="loading">Searching...</p>';
         searchResults.classList.remove('hidden');
 
         try {
-            const tracks = await player.search(query);
-
+            const tracks = await getCurrentPlayer().search(query);
             if (tracks.length === 0) {
                 searchResults.innerHTML = '<p class="no-results">No results found</p>';
                 return;
             }
 
-            // Cache search results to avoid re-fetching
             searchResultsCache = {};
-            tracks.forEach(track => {
-                searchResultsCache[track.id] = track;
-            });
+            tracks.forEach(t => searchResultsCache[t.id] = t);
 
             searchResults.innerHTML = tracks.map(track => `
-                <div class="search-result-item" data-uri="${track.uri}" data-id="${track.id}">
-                    <img src="${track.album.images[0]?.url || ''}" alt="">
+                <div class="search-result-item" data-id="${track.id}" data-uri="${track.uri}">
+                    <img src="${track.album?.images?.[0]?.url || ''}" alt="">
                     <div class="result-info">
                         <span class="result-name">${escapeHtml(track.name)}</span>
-                        <span class="result-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
+                        <span class="result-artist">${escapeHtml(track.artists?.map(a => a.name).join(', ') || '')}</span>
                     </div>
-                    <span class="result-duration">${player.formatDuration(track.duration_ms)}</span>
+                    <span class="result-duration">${getCurrentPlayer().formatDuration(track.duration_ms)}</span>
                 </div>
             `).join('');
 
-            // Add click handlers
             searchResults.querySelectorAll('.search-result-item').forEach(item => {
                 item.addEventListener('click', () => selectTrack(item.dataset.id, item.dataset.uri));
             });
-
-        } catch (error) {
-            console.error('Search error:', error);
-            searchResults.innerHTML = `<p class="error">Search failed: ${error.message}</p>`;
+        } catch (e) {
+            searchResults.innerHTML = `<p class="error">Search failed: ${e.message}</p>`;
         }
     }
 
-    // Select a track
-    async function selectTrack(trackId, trackUri) {
-        const player = getCurrentPlayer();
+    // Select track
+    function selectTrack(trackId, trackUri) {
+        const track = searchResultsCache[trackId];
+        if (!track) return;
 
-        try {
-            // Use cached track data from search results, or fetch if not available
-            let track = searchResultsCache[trackId];
-            if (!track) {
-                try {
-                    track = await player.getTrack(trackId);
-                } catch (e) {
-                    console.warn('Could not fetch track details:', e);
-                    showError('Could not load track details. Please try searching again.');
-                    return;
-                }
-            }
+        selectedTrack = { ...track, uri: trackUri, id: trackId };
 
-            // Update UI
-            trackArt.src = track.album?.images?.[0]?.url || '';
-            trackName.textContent = track.name;
-            trackArtist.textContent = track.artists?.map(a => a.name).join(', ') || 'Unknown Artist';
-            trackAlbum.textContent = track.album?.name || 'Unknown Album';
-            selectedTrackEl.classList.remove('hidden');
+        // Update mini display
+        trackArtMini.src = track.album?.images?.[0]?.url || '';
+        trackNameMini.textContent = track.name;
+        trackArtistMini.textContent = track.artists?.map(a => a.name).join(', ') || '';
+        selectedTrackMini.classList.remove('hidden');
 
-            // Update raw data display
-            rawTrackData.textContent = JSON.stringify(track._raw || track, null, 2);
+        // Update header
+        currentSongDisplay.textContent = track.name;
 
-            // Try to get audio features (may fail for new Spotify apps - API deprecated Nov 2024)
-            let features = null;
-            let formatted = null;
-            try {
-                features = await player.getAudioFeatures(trackId);
-                formatted = player.formatAudioFeatures(features);
-            } catch (e) {
-                console.warn('Audio features not available:', e.message);
-                // Create basic features from track data
-                features = {
-                    duration_ms: track.duration_ms,
-                    _note: 'Audio features API not available (deprecated for new apps Nov 2024)'
-                };
-                formatted = {
-                    bpm: 'N/A',
-                    key: 'N/A',
-                    energy: 'N/A',
-                    danceability: 'N/A',
-                    valence: 'N/A',
-                    acousticness: 'N/A',
-                    instrumentalness: 'N/A',
-                    loudness: 'N/A',
-                    duration: player.formatDuration(track.duration_ms),
-                    timeSignature: 'N/A',
-                    _limited: true
-                };
-            }
+        // Hide search
+        searchPanel.classList.add('hidden');
+        searchResults.classList.add('hidden');
 
-            if (formatted) {
-                document.getElementById('feature-bpm').textContent = formatted.bpm;
-                document.getElementById('feature-key').textContent = formatted.key;
+        // Update sync controller
+        SyncController.setTrack(selectedTrack);
 
-                const setFeature = (id, value, barId) => {
-                    document.getElementById(id).textContent = typeof value === 'number' ? `${value}%` : value;
-                    if (barId && typeof value === 'number') {
-                        document.getElementById(barId).style.width = `${value}%`;
-                    } else if (barId) {
-                        document.getElementById(barId).style.width = '0%';
-                    }
-                };
+        // Update API explorer
+        rawTrackData.textContent = JSON.stringify(track, null, 2);
 
-                setFeature('feature-energy', formatted.energy, 'bar-energy');
-                setFeature('feature-dance', formatted.danceability, 'bar-dance');
-                setFeature('feature-valence', formatted.valence, 'bar-valence');
-                setFeature('feature-acoustic', formatted.acousticness, 'bar-acoustic');
-                setFeature('feature-instrumental', formatted.instrumentalness, 'bar-instrumental');
-
-                document.getElementById('feature-loudness').textContent =
-                    formatted.loudness !== 'N/A' ? `${formatted.loudness} dB` : 'N/A';
-                document.getElementById('feature-duration').textContent = formatted.duration;
-                document.getElementById('feature-time-sig').textContent = formatted.timeSignature;
-
-                // Show note for limited data (Apple Music or deprecated Spotify API)
-                audioFeaturesNote.classList.toggle('hidden', !formatted._limited);
-                audioFeaturesEl.classList.remove('hidden');
-            }
-
-            rawAudioFeatures.textContent = JSON.stringify(features, null, 2);
-
-            // Get audio analysis (Spotify only) - may also be deprecated
-            if (currentProvider === 'spotify') {
-                try {
-                    const analysis = await player.getAudioAnalysis(trackId);
-                    rawAudioAnalysis.textContent = JSON.stringify({
-                        track: analysis.track,
-                        bars_count: analysis.bars?.length,
-                        beats_count: analysis.beats?.length,
-                        sections_count: analysis.sections?.length,
-                        segments_count: analysis.segments?.length,
-                        tatums_count: analysis.tatums?.length,
-                        sections_sample: analysis.sections?.slice(0, 3)
-                    }, null, 2);
-                } catch (e) {
-                    rawAudioAnalysis.textContent = 'Audio analysis not available (API deprecated Nov 2024)';
-                }
-            } else {
-                try {
-                    const analysis = await player.getAudioAnalysis(trackId);
-                    rawAudioAnalysis.textContent = JSON.stringify(analysis, null, 2);
-                } catch (e) {
-                    rawAudioAnalysis.textContent = 'Audio analysis not available';
-                }
-            }
-
-            // Update sync controller
-            SyncController.setTrack({ ...track, uri: trackUri, id: trackId });
-
-            // Hide search results
-            searchResults.classList.add('hidden');
-
-        } catch (error) {
-            console.error('Error selecting track:', error);
-            showError('Failed to load track details: ' + error.message);
-        }
+        updateUI();
     }
 
-    // Load YouTube video
-    function loadVideo() {
-        const url = youtubeUrlInput.value.trim();
-        if (!url) {
-            showError('Please enter a YouTube URL');
+    // Clear selected track
+    function clearSelectedTrack() {
+        selectedTrack = null;
+        selectedTrackMini.classList.add('hidden');
+        currentSongDisplay.textContent = 'No song selected';
+        SyncController.setTrack(null);
+        rawTrackData.textContent = 'No track selected';
+        rawAudioFeatures.textContent = 'No track selected';
+        updateUI();
+    }
+
+    // Load random song from top playlist
+    async function loadRandomSong() {
+        if (!isAuthenticated || currentProvider !== 'spotify') {
+            alert('Random song requires Spotify connection');
             return;
         }
 
+        randomSongBtn.disabled = true;
+        randomSongBtn.textContent = 'Loading...';
+
         try {
-            YouTubePlayer.loadVideo(url, true);
-            videoPlaceholder.classList.add('hidden');
-            speedControls.classList.remove('hidden');
-            SyncController.setVideoLoaded(true);
-            showSuccess('Video loaded!');
-        } catch (error) {
-            showError('Failed to load video: ' + error.message);
+            const playlist = await SpotifyAuth.apiRequest(`/playlists/${TOP_PLAYLIST_ID}/tracks?limit=50`);
+            const tracks = playlist.items.map(item => item.track).filter(t => t);
+
+            if (tracks.length > 0) {
+                const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+                searchResultsCache[randomTrack.id] = randomTrack;
+                selectTrack(randomTrack.id, randomTrack.uri);
+            }
+        } catch (e) {
+            console.error('Failed to load random song:', e);
+            alert('Failed to load random song');
         }
+
+        randomSongBtn.disabled = false;
+        randomSongBtn.innerHTML = '&#127922; Random';
+    }
+
+    // Toggle playback
+    async function togglePlayback() {
+        if (!SyncController.isReadyToSync()) return;
+
+        if (isPlaying) {
+            await SyncController.pauseBoth();
+            isPlaying = false;
+        } else {
+            await SyncController.playBoth();
+            isPlaying = true;
+        }
+
+        updatePlayButton();
+    }
+
+    // Stop and reset
+    async function stopAndReset() {
+        isPlaying = false;
+
+        // Stop YouTube
+        YouTubePlayer.stop();
+        YouTubePlayer.seek(0);
+
+        // Stop and reset Spotify/Apple Music
+        const player = getCurrentPlayer();
+        try {
+            await player.pause();
+            await player.seek(0);
+        } catch (e) {
+            console.log('Stop error:', e);
+        }
+
+        // Reset progress
+        progressBar.style.width = '0%';
+        currentTimeEl.textContent = '0:00';
+
+        // Stop sync controller tracking
+        SyncController.stopBoth();
+
+        updatePlayButton();
+    }
+
+    // Update play button state
+    function updatePlayButton() {
+        const playIcon = mainPlayBtn.querySelector('.play-icon');
+        const playLabel = mainPlayBtn.querySelector('.btn-label');
+
+        if (isPlaying) {
+            mainPlayBtn.classList.add('playing');
+            playIcon.innerHTML = '&#10074;&#10074;';
+            playLabel.textContent = 'Pause';
+        } else {
+            mainPlayBtn.classList.remove('playing');
+            playIcon.innerHTML = '&#9654;';
+            playLabel.textContent = 'Play';
+        }
+    }
+
+    // Handle video state change
+    function handleVideoStateChange(state) {
+        // Video ended
+        if (state === YouTubePlayer.PlayerState.ENDED) {
+            if (fadeOnEnd) {
+                fadeOutMusic();
+            }
+            isPlaying = false;
+            updatePlayButton();
+        }
+    }
+
+    // Fade out music
+    async function fadeOutMusic() {
+        const player = getCurrentPlayer();
+        const steps = 10;
+        const duration = 2000;
+        const interval = duration / steps;
+
+        for (let i = steps; i >= 0; i--) {
+            await player.setVolume(i * 10);
+            await new Promise(r => setTimeout(r, interval));
+        }
+
+        await player.pause();
+        await player.setVolume(50); // Reset volume
+    }
+
+    // Handle progress updates
+    function handleProgress(data) {
+        const percent = (data.currentTime / data.duration) * 100;
+        progressBar.style.width = `${Math.min(percent, 100)}%`;
+        currentTimeEl.textContent = formatTime(data.currentTime);
+        totalTimeEl.textContent = formatTime(data.duration);
+    }
+
+    // Adjust timing offset
+    function adjustOffset(delta) {
+        const current = SyncController.getOffset();
+        SyncController.setOffset(current + delta);
+        offsetValue.textContent = `${(SyncController.getOffset() / 1000).toFixed(1)}s`;
     }
 
     // Set video speed
     function setVideoSpeed(speed) {
         SyncController.setVideoSpeed(speed);
-    }
-
-    // Update speed buttons active state
-    function updateSpeedButtons(speed) {
         speedButtons.forEach(btn => {
             btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speed);
         });
         customSpeedInput.value = speed;
     }
 
-    // Update sync controls based on state
-    function updateSyncControls() {
-        const canSync = SyncController.isReadyToSync();
-        syncPlayBtn.disabled = !canSync;
-        syncPauseBtn.disabled = !canSync;
-        syncStopBtn.disabled = !canSync;
+    // Update UI state
+    function updateUI() {
+        const canPlay = SyncController.isReadyToSync();
+        mainPlayBtn.disabled = !canPlay;
+        stopResetBtn.disabled = !canPlay;
+
+        // Update random button state
+        randomSongBtn.disabled = !isAuthenticated || currentProvider !== 'spotify';
     }
 
-    // Update playback buttons
-    function updatePlaybackButtons(isPlaying) {
-        syncPlayBtn.disabled = isPlaying;
-        syncPauseBtn.disabled = !isPlaying;
-    }
-
-    // Format time (ms to mm:ss)
+    // Format time
     function formatTime(ms) {
-        const seconds = Math.floor(ms / 1000);
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+        const secs = Math.floor(ms / 1000);
+        const mins = Math.floor(secs / 60);
+        const remainingSecs = secs % 60;
+        return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
     }
 
     // Escape HTML
     function escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = text || '';
         return div.innerHTML;
     }
 
-    // Show error message
-    function showError(message) {
-        console.error(message);
-        alert('Error: ' + message);
-    }
-
-    // Show success message
-    function showSuccess(message) {
-        console.log('Success:', message);
-    }
-
-    // Start the application
+    // Start
     init();
 })();
