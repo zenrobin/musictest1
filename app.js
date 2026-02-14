@@ -111,6 +111,12 @@
 
     // Initialize application
     async function init() {
+        // Display version
+        const versionDisplay = document.getElementById('version-display');
+        if (versionDisplay && typeof VERSION !== 'undefined') {
+            versionDisplay.textContent = VERSION.getDisplayString();
+        }
+
         // Display redirect URI
         redirectUriDisplay.textContent = window.location.origin + window.location.pathname;
 
