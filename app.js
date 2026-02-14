@@ -106,6 +106,9 @@
     const rawAudioFeatures = document.getElementById('raw-audio-features');
     const rawAudioAnalysis = document.getElementById('raw-audio-analysis');
 
+    // Cache for search results (to avoid re-fetching)
+    let searchResultsCache = {};
+
     // Initialize application
     async function init() {
         // Display redirect URI
@@ -529,6 +532,12 @@
                 return;
             }
 
+            // Cache search results to avoid re-fetching
+            searchResultsCache = {};
+            tracks.forEach(track => {
+                searchResultsCache[track.id] = track;
+            });
+
             searchResults.innerHTML = tracks.map(track => `
                 <div class="search-result-item" data-uri="${track.uri}" data-id="${track.id}">
                     <img src="${track.album.images[0]?.url || ''}" alt="">
@@ -556,22 +565,55 @@
         const player = getCurrentPlayer();
 
         try {
-            // Get track details
-            const track = await player.getTrack(trackId);
+            // Use cached track data from search results, or fetch if not available
+            let track = searchResultsCache[trackId];
+            if (!track) {
+                try {
+                    track = await player.getTrack(trackId);
+                } catch (e) {
+                    console.warn('Could not fetch track details:', e);
+                    showError('Could not load track details. Please try searching again.');
+                    return;
+                }
+            }
 
             // Update UI
-            trackArt.src = track.album.images[0]?.url || '';
+            trackArt.src = track.album?.images?.[0]?.url || '';
             trackName.textContent = track.name;
-            trackArtist.textContent = track.artists.map(a => a.name).join(', ');
-            trackAlbum.textContent = track.album.name;
+            trackArtist.textContent = track.artists?.map(a => a.name).join(', ') || 'Unknown Artist';
+            trackAlbum.textContent = track.album?.name || 'Unknown Album';
             selectedTrackEl.classList.remove('hidden');
 
             // Update raw data display
             rawTrackData.textContent = JSON.stringify(track._raw || track, null, 2);
 
-            // Get and display audio features
-            const features = await player.getAudioFeatures(trackId);
-            const formatted = player.formatAudioFeatures(features);
+            // Try to get audio features (may fail for new Spotify apps - API deprecated Nov 2024)
+            let features = null;
+            let formatted = null;
+            try {
+                features = await player.getAudioFeatures(trackId);
+                formatted = player.formatAudioFeatures(features);
+            } catch (e) {
+                console.warn('Audio features not available:', e.message);
+                // Create basic features from track data
+                features = {
+                    duration_ms: track.duration_ms,
+                    _note: 'Audio features API not available (deprecated for new apps Nov 2024)'
+                };
+                formatted = {
+                    bpm: 'N/A',
+                    key: 'N/A',
+                    energy: 'N/A',
+                    danceability: 'N/A',
+                    valence: 'N/A',
+                    acousticness: 'N/A',
+                    instrumentalness: 'N/A',
+                    loudness: 'N/A',
+                    duration: player.formatDuration(track.duration_ms),
+                    timeSignature: 'N/A',
+                    _limited: true
+                };
+            }
 
             if (formatted) {
                 document.getElementById('feature-bpm').textContent = formatted.bpm;
@@ -597,14 +639,14 @@
                 document.getElementById('feature-duration').textContent = formatted.duration;
                 document.getElementById('feature-time-sig').textContent = formatted.timeSignature;
 
-                // Show note for Apple Music limited data
+                // Show note for limited data (Apple Music or deprecated Spotify API)
                 audioFeaturesNote.classList.toggle('hidden', !formatted._limited);
                 audioFeaturesEl.classList.remove('hidden');
             }
 
             rawAudioFeatures.textContent = JSON.stringify(features, null, 2);
 
-            // Get audio analysis (Spotify only)
+            // Get audio analysis (Spotify only) - may also be deprecated
             if (currentProvider === 'spotify') {
                 try {
                     const analysis = await player.getAudioAnalysis(trackId);
@@ -618,11 +660,15 @@
                         sections_sample: analysis.sections?.slice(0, 3)
                     }, null, 2);
                 } catch (e) {
-                    rawAudioAnalysis.textContent = 'Audio analysis not available';
+                    rawAudioAnalysis.textContent = 'Audio analysis not available (API deprecated Nov 2024)';
                 }
             } else {
-                const analysis = await player.getAudioAnalysis(trackId);
-                rawAudioAnalysis.textContent = JSON.stringify(analysis, null, 2);
+                try {
+                    const analysis = await player.getAudioAnalysis(trackId);
+                    rawAudioAnalysis.textContent = JSON.stringify(analysis, null, 2);
+                } catch (e) {
+                    rawAudioAnalysis.textContent = 'Audio analysis not available';
+                }
             }
 
             // Update sync controller
