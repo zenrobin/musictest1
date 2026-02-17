@@ -16,8 +16,49 @@
     let currentDuration = 0; // Track total duration for seeking
     let isDragging = false;
 
-    // Spotify Top 50 Global playlist ID for random songs
-    const TOP_PLAYLIST_ID = '37i9dQZEVXbMDoHDwVN2tF';
+    // Curated song list for random selection
+    const SONG_LIST = [
+        {"artist":"Ella Langley","song":"Choosin' Texas"},
+        {"artist":"Olivia Dean","song":"Man I Need"},
+        {"artist":"Taylor Swift","song":"Opalite"},
+        {"artist":"Bruno Mars","song":"I Just Might"},
+        {"artist":"Alex Warren","song":"Ordinary"},
+        {"artist":"Kehlani","song":"Folded"},
+        {"artist":"RAYE","song":"Where Is My Husband!"},
+        {"artist":"Morgan Wallen","song":"I Got Better"},
+        {"artist":"Justin Bieber","song":"Daisies"},
+        {"artist":"Leon Thomas","song":"Mutt"},
+        {"artist":"Tate McRae","song":"TIT FOR TAT"},
+        {"artist":"Sabrina Carpenter","song":"When Did You Get Hot?"},
+        {"artist":"David Guetta","song":"Gone Gone Gone"},
+        {"artist":"Benson Boone","song":"Mr Electric Blue"},
+        {"artist":"Meghan Trainor","song":"Still Don't Care"},
+        {"artist":"Lady Gaga","song":"Die With A Smile"},
+        {"artist":"Chappell Roan","song":"Pink Pony Club"},
+        {"artist":"Myles Smith","song":"Nice To Meet You"},
+        {"artist":"Doechii","song":"Anxiety"},
+        {"artist":"Arlo Parks","song":"2SIDED"},
+        {"artist":"Madison Beer","song":"bittersweet"},
+        {"artist":"Hozier","song":"Too Sweet"},
+        {"artist":"AJR","song":"The Big Goodbye"},
+        {"artist":"Rosalía","song":"La Perla"},
+        {"artist":"Gracie Abrams","song":"That's So True"},
+        {"artist":"Ravyn Lenae","song":"Love Me Not"},
+        {"artist":"ROSÉ","song":"APT."},
+        {"artist":"BTS","song":"Butter"},
+        {"artist":"Doja Cat","song":"Agora Hills"},
+        {"artist":"Ariana Grande","song":"We Can't Be Friends"},
+        {"artist":"Miley Cyrus","song":"Flowers"},
+        {"artist":"Adele","song":"I Drink Wine"},
+        {"artist":"Dua Lipa","song":"Houdini"},
+        {"artist":"Ed Sheeran","song":"Eyes Closed"},
+        {"artist":"Shawn Mendes","song":"When You're Gone"},
+        {"artist":"Olivia Rodrigo","song":"vampire"},
+        {"artist":"The Weeknd","song":"Blinding Lights"},
+        {"artist":"Coldplay","song":"Miracles"},
+        {"artist":"Beyoncé","song":"CUFF IT"},
+        {"artist":"Justin Timberlake","song":"CAN'T STOP THE FEELING!"}
+    ];
 
     // DOM Elements - Header
     const connectionStatus = document.getElementById('connection-status');
@@ -600,7 +641,7 @@
         updateUI();
     }
 
-    // Load random song using search
+    // Load random song from curated list
     async function loadRandomSong() {
         if (!isAuthenticated || currentProvider !== 'spotify') {
             alert('Random song requires Spotify connection');
@@ -611,30 +652,26 @@
         randomSongBtn.textContent = 'Loading...';
 
         try {
-            // Use search API with random popular terms
-            const popularTerms = [
-                'top hits 2024', 'popular music', 'billboard hot',
-                'Drake', 'Taylor Swift', 'The Weeknd', 'Ed Sheeran',
-                'Dua Lipa', 'Bad Bunny', 'Harry Styles', 'Beyoncé',
-                'Ariana Grande', 'Post Malone', 'Billie Eilish', 'Bruno Mars'
-            ];
-            const randomTerm = popularTerms[Math.floor(Math.random() * popularTerms.length)];
-            // Keep offset low to avoid issues with search result limits
-            const offset = Math.floor(Math.random() * 20);
+            // Pick a random song from our curated list
+            const randomEntry = SONG_LIST[Math.floor(Math.random() * SONG_LIST.length)];
+            const searchQuery = `${randomEntry.artist} ${randomEntry.song}`;
 
             const result = await SpotifyAuth.apiRequest(
-                `/search?q=${encodeURIComponent(randomTerm)}&type=track&limit=50&offset=${offset}`
+                `/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=5`
             );
 
-            // Filter for valid tracks (don't require preview_url - we use Web Playback SDK)
+            // Get first valid track from results
             const tracks = result.tracks?.items?.filter(t => t && t.id && t.uri) || [];
 
             if (tracks.length > 0) {
-                const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
-                searchResultsCache[randomTrack.id] = randomTrack;
-                selectTrack(randomTrack.id, randomTrack.uri);
+                // Pick the first result (most relevant match)
+                const track = tracks[0];
+                searchResultsCache[track.id] = track;
+                selectTrack(track.id, track.uri);
             } else {
-                alert('No tracks found. Try again.');
+                // If no results, try again with a different song
+                console.log('No results for:', searchQuery);
+                alert('Song not found. Try again for a different song.');
             }
         } catch (e) {
             console.error('Failed to load random song:', e);

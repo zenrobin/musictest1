@@ -192,22 +192,22 @@ const AudioAnalyzer = (function() {
 
     async function captureTabAudio() {
         try {
-            // Request tab audio capture - user will select which tab to share
+            // Request tab capture - browsers require video:true, but we only use audio
+            // User must check "Share tab audio" in the browser dialog
             const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: false,  // We only want audio
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false
-                }
+                video: true,  // Required by browsers (we'll ignore the video track)
+                audio: true   // This enables the "Share tab audio" checkbox
             });
+
+            // Stop video track immediately - we don't need it
+            stream.getVideoTracks().forEach(t => t.stop());
 
             // Check if audio track is present
             const audioTracks = stream.getAudioTracks();
             if (audioTracks.length === 0) {
-                // User might have shared screen without audio
+                // User didn't check "Share tab audio" checkbox
                 stream.getTracks().forEach(t => t.stop());
-                updateStatus('No audio track - enable "Share tab audio" checkbox');
+                updateStatus('No audio - check "Share tab audio" and select this tab');
                 return false;
             }
 
