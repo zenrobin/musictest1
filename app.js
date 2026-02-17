@@ -561,17 +561,31 @@
         randomSongBtn.textContent = 'Loading...';
 
         try {
-            const playlist = await SpotifyAuth.apiRequest(`/playlists/${TOP_PLAYLIST_ID}/tracks?limit=50`);
-            const tracks = playlist.items.map(item => item.track).filter(t => t);
+            // Use search API with random popular terms - more reliable than playlist access
+            const popularTerms = [
+                'top hits', 'popular', 'billboard', 'hit songs',
+                'Drake', 'Taylor Swift', 'The Weeknd', 'Ed Sheeran',
+                'Dua Lipa', 'Bad Bunny', 'Harry Styles', 'Beyoncé'
+            ];
+            const randomTerm = popularTerms[Math.floor(Math.random() * popularTerms.length)];
+            const offset = Math.floor(Math.random() * 50); // Random offset for variety
+
+            const result = await SpotifyAuth.apiRequest(
+                `/search?q=${encodeURIComponent(randomTerm)}&type=track&limit=20&offset=${offset}`
+            );
+
+            const tracks = result.tracks?.items?.filter(t => t && t.preview_url !== null) || [];
 
             if (tracks.length > 0) {
                 const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
                 searchResultsCache[randomTrack.id] = randomTrack;
                 selectTrack(randomTrack.id, randomTrack.uri);
+            } else {
+                alert('No tracks found. Try again.');
             }
         } catch (e) {
             console.error('Failed to load random song:', e);
-            alert('Failed to load random song');
+            alert('Failed to load random song: ' + e.message);
         }
 
         randomSongBtn.disabled = false;
