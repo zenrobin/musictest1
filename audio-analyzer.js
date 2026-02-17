@@ -24,6 +24,10 @@ const AudioAnalyzer = (function() {
     let animFrameId = null;
     let captureMethod = 'none';
     let statusCallback = null;
+    let silenceFrames = 0;
+    let hasReceivedAudio = false;
+    const SILENCE_THRESHOLD = 5; // Consider it silence if overall energy < 5
+    const SILENCE_FRAMES_WARNING = 120; // ~2 seconds at 60fps
 
     // Beat detection state
     let beatHistory = [];
@@ -234,9 +238,23 @@ const AudioAnalyzer = (function() {
         analyser.getByteFrequencyData(frequencyData);
         analyser.getByteTimeDomainData(timeDomainData);
 
-        detectBeat();
-
         const analysis = computeAnalysis();
+
+        // Track if we're receiving actual audio
+        if (analysis.overall > SILENCE_THRESHOLD) {
+            silenceFrames = 0;
+            if (!hasReceivedAudio) {
+                hasReceivedAudio = true;
+                updateStatus('Receiving audio data');
+            }
+        } else {
+            silenceFrames++;
+            if (silenceFrames === SILENCE_FRAMES_WARNING && captureMethod !== 'none') {
+                updateStatus('No audio detected (DRM may block capture)');
+            }
+        }
+
+        detectBeat();
 
         if (onAnalysisCallback) {
             onAnalysisCallback(analysis);

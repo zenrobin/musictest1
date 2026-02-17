@@ -539,14 +539,38 @@
     }
 
     // Clear selected track
-    function clearSelectedTrack() {
+    async function clearSelectedTrack() {
+        // Reset video to beginning when clearing music
+        isPlaying = false;
+        hasStartedPlaying = false;
+        isFading = false;
+        YouTubePlayer.reload();
+
+        // Stop music
+        const player = getCurrentPlayer();
+        try {
+            await player.pause();
+            await player.seek(0);
+        } catch (e) {
+            // Ignore errors if no track was playing
+        }
+
+        // Clear track state
         selectedTrack = null;
-        hasStartedPlaying = false; // Reset so next play starts fresh
         selectedTrackMini.classList.add('hidden');
         currentSongDisplay.textContent = 'No song selected';
         SyncController.setTrack(null);
+        SyncController.stopBoth();
+
+        // Reset progress display
+        progressBar.style.width = '0%';
+        currentTimeEl.textContent = '0:00';
+
+        // Clear API explorer
         rawTrackData.textContent = 'No track selected';
         rawAudioFeatures.textContent = 'No track selected';
+
+        updatePlayButton();
         updateUI();
     }
 
@@ -619,9 +643,8 @@
         hasStartedPlaying = false; // Reset so next play starts fresh
         isFading = false;
 
-        // Pause YouTube (don't use stop() as it can trigger auto-play on seek)
-        YouTubePlayer.pause();
-        YouTubePlayer.seek(0);
+        // Reload YouTube video (re-cues to beginning, more reliable than seek)
+        YouTubePlayer.reload();
 
         // Stop and reset Spotify/Apple Music
         const player = getCurrentPlayer();

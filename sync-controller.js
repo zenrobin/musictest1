@@ -202,8 +202,8 @@ const SyncController = (function() {
 
         const player = getMusicPlayer();
         try {
-            YouTubePlayer.pause();
-            YouTubePlayer.seek(0);
+            // Reload video to reset it (more reliable than pause+seek)
+            YouTubePlayer.reload();
             await player.seek(0);
             await player.pause();
         } catch (error) {

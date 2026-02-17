@@ -162,6 +162,14 @@ const YouTubePlayer = (function() {
         }
     }
 
+    // Reload/reset video to beginning (cues it without playing)
+    function reload() {
+        if (player && isReady && videoId) {
+            player.cueVideoById(videoId);
+            player.mute();
+        }
+    }
+
     // Seek to position (seconds)
     function seek(seconds, allowSeekAhead = true) {
         if (player && isReady) {
@@ -302,6 +310,7 @@ const YouTubePlayer = (function() {
         play,
         pause,
         stop,
+        reload,
         seek,
         mute,
         unmute,
