@@ -2,8 +2,8 @@
  * Version info - update BUILD_TIME with each release
  */
 const VERSION = {
-    number: '1.0.5',
-    buildTime: '2026-02-14T21:15:00Z',
+    number: '1.1.0',
+    buildTime: '2026-02-17T12:00:00Z',
 
     // Format for display
     getDisplayString: function() {

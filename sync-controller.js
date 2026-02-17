@@ -60,8 +60,8 @@ const SyncController = (function() {
     function handleYouTubeStateChange(state) {
         // YouTube states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
         if (state === YouTubePlayer.PlayerState.ENDED) {
-            // Video ended, stop music too
-            getMusicPlayer().pause().catch(console.error);
+            // Video ended - stop tracking but don't pause music immediately.
+            // App.js handles fade out or immediate stop.
             stopProgressTracking();
         }
     }
@@ -202,7 +202,7 @@ const SyncController = (function() {
 
         const player = getMusicPlayer();
         try {
-            YouTubePlayer.stop();
+            YouTubePlayer.pause();
             YouTubePlayer.seek(0);
             await player.seek(0);
             await player.pause();

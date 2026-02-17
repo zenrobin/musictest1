@@ -137,16 +137,23 @@
                     </div>
                 </div>
 
-                <!-- BPM Detection (Future) -->
+                <!-- Real-time Audio Analysis -->
                 <div class="tool-group">
-                    <h4>BPM Detection</h4>
-                    <p class="tool-desc">Auto-detect music tempo</p>
+                    <h4>Live Audio Analysis</h4>
+                    <p class="tool-desc">Real-time frequency visualization and beat detection</p>
+                    <div class="audio-visualizer">
+                        <canvas id="audio-canvas" width="800" height="120"></canvas>
+                        <div id="analyzer-status" class="analyzer-status">Waiting for audio...</div>
+                    </div>
                     <div class="bpm-display">
                         <span id="detected-bpm" class="bpm-value">--</span>
                         <span class="bpm-label">BPM</span>
-                        <button id="detect-bpm-btn" class="btn btn-small btn-secondary" disabled>Detect</button>
+                        <div id="beat-indicator" class="beat-indicator"></div>
                     </div>
-                    <p class="tool-note">BPM detection coming soon</p>
+                    <div class="analyzer-controls">
+                        <label class="tool-desc">Beat sensitivity</label>
+                        <input type="range" id="beat-sensitivity" min="10" max="25" value="14" step="1">
+                    </div>
                 </div>
 
                 <!-- Fade Controls -->
@@ -245,8 +252,9 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts - audio-analyzer.js must load before Spotify SDK to intercept AudioContext -->
     <script src="version.js"></script>
+    <script src="audio-analyzer.js"></script>
     <script src="spotify-auth.js"></script>
     <script src="spotify-player.js"></script>
     <script src="apple-music-auth.js"></script>

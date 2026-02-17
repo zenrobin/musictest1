@@ -13,7 +13,7 @@ const YouTubePlayer = (function() {
 
     // Callbacks
     let onReadyCallback = null;
-    let onStateChangeCallback = null;
+    let onStateChangeCallbacks = [];
     let onErrorCallback = null;
 
     // YouTube player states
@@ -100,9 +100,7 @@ const YouTubePlayer = (function() {
                         resolve(player);
                     },
                     'onStateChange': (event) => {
-                        if (onStateChangeCallback) {
-                            onStateChangeCallback(event.data);
-                        }
+                        onStateChangeCallbacks.forEach(cb => cb(event.data));
                     },
                     'onError': (event) => {
                         const errorMessages = {
@@ -268,7 +266,7 @@ const YouTubePlayer = (function() {
     }
 
     function onStateChange(callback) {
-        onStateChangeCallback = callback;
+        onStateChangeCallbacks.push(callback);
     }
 
     function onError(callback) {

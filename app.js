@@ -85,6 +85,13 @@
     const applyCustomSpeedBtn = document.getElementById('apply-custom-speed');
     const fadeOnEndCheckbox = document.getElementById('fade-on-end');
 
+    // DOM Elements - Audio Analyzer
+    const audioCanvas = document.getElementById('audio-canvas');
+    const analyzerStatus = document.getElementById('analyzer-status');
+    const detectedBPM = document.getElementById('detected-bpm');
+    const beatIndicator = document.getElementById('beat-indicator');
+    const beatSensitivity = document.getElementById('beat-sensitivity');
+
     // DOM Elements - API Explorer
     const rawTrackData = document.getElementById('raw-track-data');
     const rawAudioFeatures = document.getElementById('raw-audio-features');
@@ -126,6 +133,9 @@
         // Initialize sync controller
         SyncController.init();
         SyncController.onProgress(handleProgress);
+
+        // Setup audio analyzer
+        setupAudioAnalyzer();
 
         // Show settings if not connected
         if (!isAuthenticated) {
@@ -197,6 +207,8 @@
         try {
             SpotifyPlayer.onReady(() => {
                 updateUI();
+                // Spotify SDK creates AudioContext on ready — start analyzer
+                tryStartAnalyzer();
             });
             SpotifyPlayer.onError((type, msg) => {
                 console.error('Spotify error:', type, msg);
@@ -391,6 +403,56 @@
         fadeOnEndCheckbox.addEventListener('change', () => {
             fadeOnEnd = fadeOnEndCheckbox.checked;
         });
+
+        // Audio analyzer sensitivity
+        beatSensitivity.addEventListener('input', () => {
+            AudioAnalyzer.setSensitivity(beatSensitivity.value / 10);
+        });
+    }
+
+    // Setup audio analyzer
+    function setupAudioAnalyzer() {
+        // Set canvas resolution to match display size
+        if (audioCanvas) {
+            const rect = audioCanvas.getBoundingClientRect();
+            audioCanvas.width = rect.width * (window.devicePixelRatio || 1);
+            audioCanvas.height = rect.height * (window.devicePixelRatio || 1);
+        }
+
+        // Start analyzer — it will begin producing data once AudioContext is captured
+        AudioAnalyzer.onBeat((beat) => {
+            // Flash beat indicator
+            beatIndicator.classList.add('pulse');
+            setTimeout(() => beatIndicator.classList.remove('pulse'), 100);
+
+            // Update BPM display
+            if (beat.bpm > 0) {
+                detectedBPM.textContent = beat.bpm;
+            }
+        });
+
+        AudioAnalyzer.onAnalysis((analysis) => {
+            // Update status when we're getting data
+            if (analysis.overall > 0 && analyzerStatus) {
+                analyzerStatus.classList.add('active');
+            }
+        });
+
+        // Try to start — may not have AudioContext yet
+        AudioAnalyzer.start(audioCanvas);
+
+        // Also try to start when music begins playing
+        const origToggle = togglePlayback;
+    }
+
+    // Try starting the audio analyzer (called after Spotify connects)
+    function tryStartAnalyzer() {
+        if (AudioAnalyzer.hasCapturedContext()) {
+            AudioAnalyzer.start(audioCanvas);
+            if (analyzerStatus) {
+                analyzerStatus.textContent = 'Listening...';
+            }
+        }
     }
 
     // Load video
@@ -466,6 +528,10 @@
         // Update sync controller
         SyncController.setTrack(selectedTrack);
 
+        // Reset BPM for new track
+        AudioAnalyzer.resetBPM();
+        detectedBPM.textContent = '--';
+
         // Update API explorer
         rawTrackData.textContent = JSON.stringify(track, null, 2);
 
@@ -538,8 +604,8 @@
         isPlaying = false;
         hasStartedPlaying = false; // Reset so next play starts fresh
 
-        // Stop YouTube
-        YouTubePlayer.stop();
+        // Pause YouTube (don't use stop() as it can trigger auto-play on seek)
+        YouTubePlayer.pause();
         YouTubePlayer.seek(0);
 
         // Stop and reset Spotify/Apple Music
@@ -626,11 +692,15 @@
     function handleVideoStateChange(state) {
         // Video ended
         if (state === YouTubePlayer.PlayerState.ENDED) {
-            if (fadeOnEnd) {
-                fadeOutMusic();
-            }
             isPlaying = false;
             updatePlayButton();
+
+            if (fadeOnEnd) {
+                fadeOutMusic();
+            } else {
+                // Immediately stop music if fade is off
+                getCurrentPlayer().pause().catch(console.error);
+            }
         }
     }
 
