@@ -137,28 +137,18 @@
                     </div>
                 </div>
 
-                <!-- Real-time Audio Analysis -->
+                <!-- Audio Analysis from Spotify -->
                 <div class="tool-group">
-                    <h4>Live Audio Analysis</h4>
-                    <p class="tool-desc">Real-time frequency visualization and beat detection</p>
-                    <div class="tab-capture-section">
-                        <button id="capture-tab-btn" class="btn btn-primary btn-small">
-                            <span class="capture-icon">&#127897;</span> Capture Tab Audio
-                        </button>
-                        <p class="tool-note">1. Click button  2. Select this tab  3. Check "Also share tab audio"  4. Click Share</p>
-                    </div>
+                    <h4>Audio Analysis</h4>
+                    <p class="tool-desc">BPM, energy, danceability and more from Spotify's audio analysis API</p>
                     <div class="audio-visualizer">
                         <canvas id="audio-canvas" width="800" height="120"></canvas>
-                        <div id="analyzer-status" class="analyzer-status">Waiting for audio...</div>
+                        <div id="analyzer-status" class="analyzer-status">Select a song to see audio features</div>
                     </div>
                     <div class="bpm-display">
                         <span id="detected-bpm" class="bpm-value">--</span>
                         <span class="bpm-label">BPM</span>
                         <div id="beat-indicator" class="beat-indicator"></div>
-                    </div>
-                    <div class="analyzer-controls">
-                        <label class="tool-desc">Beat sensitivity</label>
-                        <input type="range" id="beat-sensitivity" min="10" max="25" value="14" step="1">
                     </div>
                 </div>
 

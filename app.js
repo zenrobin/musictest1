@@ -132,8 +132,6 @@
     const analyzerStatus = document.getElementById('analyzer-status');
     const detectedBPM = document.getElementById('detected-bpm');
     const beatIndicator = document.getElementById('beat-indicator');
-    const beatSensitivity = document.getElementById('beat-sensitivity');
-    const captureTabBtn = document.getElementById('capture-tab-btn');
 
     // DOM Elements - API Explorer
     const rawTrackData = document.getElementById('raw-track-data');
@@ -250,8 +248,6 @@
         try {
             SpotifyPlayer.onReady(() => {
                 updateUI();
-                // Spotify SDK creates AudioContext on ready — start analyzer
-                tryStartAnalyzer();
             });
             SpotifyPlayer.onError((type, msg) => {
                 console.error('Spotify error:', type, msg);
@@ -446,79 +442,16 @@
         fadeOnEndCheckbox.addEventListener('change', () => {
             fadeOnEnd = fadeOnEndCheckbox.checked;
         });
-
-        // Audio analyzer sensitivity
-        beatSensitivity.addEventListener('input', () => {
-            AudioAnalyzer.setSensitivity(beatSensitivity.value / 10);
-        });
-
-        // Tab audio capture button
-        captureTabBtn.addEventListener('click', toggleTabCapture);
     }
 
-    // Toggle tab audio capture
-    async function toggleTabCapture() {
-        if (AudioAnalyzer.isTabCaptureActive()) {
-            AudioAnalyzer.stopTabCapture();
-            captureTabBtn.innerHTML = '<span class="capture-icon">&#127897;</span> Capture Tab Audio';
-            captureTabBtn.classList.remove('active');
-        } else {
-            captureTabBtn.disabled = true;
-            captureTabBtn.textContent = 'Starting...';
-
-            const success = await AudioAnalyzer.captureTabAudio();
-
-            captureTabBtn.disabled = false;
-            if (success) {
-                captureTabBtn.innerHTML = '<span class="capture-icon">&#9632;</span> Stop Capture';
-                captureTabBtn.classList.add('active');
-            } else {
-                captureTabBtn.innerHTML = '<span class="capture-icon">&#127897;</span> Capture Tab Audio';
-            }
-        }
-    }
-
-    // Setup audio analyzer
+    // Setup audio analyzer canvas
     function setupAudioAnalyzer() {
         // Set canvas resolution to match display size
         if (audioCanvas) {
             const rect = audioCanvas.getBoundingClientRect();
             audioCanvas.width = rect.width * (window.devicePixelRatio || 1);
             audioCanvas.height = rect.height * (window.devicePixelRatio || 1);
-        }
-
-        // Status updates
-        AudioAnalyzer.onStatus((msg) => {
-            if (analyzerStatus) {
-                analyzerStatus.textContent = msg;
-            }
-        });
-
-        // Beat callback
-        AudioAnalyzer.onBeat((beat) => {
-            beatIndicator.classList.add('pulse');
-            setTimeout(() => beatIndicator.classList.remove('pulse'), 100);
-
-            if (beat.bpm > 0) {
-                detectedBPM.textContent = beat.bpm;
-            }
-        });
-
-        // Analysis callback
-        AudioAnalyzer.onAnalysis((analysis) => {
-            if (analysis.overall > 0 && analyzerStatus) {
-                analyzerStatus.classList.add('active');
-            }
-        });
-
-        // Start — will retry automatically until audio context is captured
-        AudioAnalyzer.start(audioCanvas);
-    }
-
-    // Try starting the audio analyzer (called after Spotify connects)
-    function tryStartAnalyzer() {
-        if (AudioAnalyzer.hasCapturedContext()) {
-            AudioAnalyzer.start(audioCanvas);
+            ctx = audioCanvas.getContext('2d');
         }
     }
 
@@ -573,7 +506,7 @@
     }
 
     // Select track
-    function selectTrack(trackId, trackUri) {
+    async function selectTrack(trackId, trackUri) {
         const track = searchResultsCache[trackId];
         if (!track) return;
 
@@ -595,14 +528,154 @@
         // Update sync controller
         SyncController.setTrack(selectedTrack);
 
-        // Reset BPM for new track
-        AudioAnalyzer.resetBPM();
-        detectedBPM.textContent = '--';
+        // Fetch Spotify audio features and analysis
+        await fetchSpotifyAudioData(trackId);
 
         // Update API explorer
         rawTrackData.textContent = JSON.stringify(track, null, 2);
 
         updateUI();
+    }
+
+    // Fetch audio features and analysis from Spotify API
+    async function fetchSpotifyAudioData(trackId) {
+        if (currentProvider !== 'spotify') return;
+
+        try {
+            // Fetch audio features (contains BPM, energy, etc.)
+            const features = await SpotifyAuth.apiRequest(`/audio-features/${trackId}`);
+
+            if (features) {
+                // Update BPM display with actual Spotify data
+                const bpm = Math.round(features.tempo);
+                detectedBPM.textContent = bpm;
+                analyzerStatus.textContent = `Spotify: ${bpm} BPM`;
+                analyzerStatus.classList.add('active');
+
+                // Store features for later use
+                selectedTrack.audioFeatures = features;
+
+                // Update API explorer
+                rawAudioFeatures.textContent = JSON.stringify(features, null, 2);
+
+                // Start beat simulation based on BPM
+                startBeatSimulation(bpm);
+
+                // Draw audio features visualization
+                drawIdleVisualization();
+            }
+        } catch (e) {
+            console.log('Could not fetch audio features:', e.message);
+            analyzerStatus.textContent = 'Audio features unavailable';
+        }
+
+        try {
+            // Fetch detailed audio analysis (beats, sections, segments)
+            const analysis = await SpotifyAuth.apiRequest(`/audio-analysis/${trackId}`);
+
+            if (analysis) {
+                selectedTrack.audioAnalysis = analysis;
+                console.log('Audio analysis loaded:', {
+                    beats: analysis.beats?.length,
+                    sections: analysis.sections?.length,
+                    segments: analysis.segments?.length
+                });
+            }
+        } catch (e) {
+            console.log('Could not fetch audio analysis:', e.message);
+        }
+    }
+
+    // Beat simulation state
+    let beatSimulationInterval = null;
+    let currentBeatIndex = 0;
+
+    // Start beat simulation based on BPM
+    function startBeatSimulation(bpm) {
+        stopBeatSimulation();
+
+        if (bpm <= 0) return;
+
+        const msPerBeat = 60000 / bpm;
+
+        beatSimulationInterval = setInterval(() => {
+            if (!isPlaying) return;
+
+            // Pulse the beat indicator
+            beatIndicator.classList.add('pulse');
+            setTimeout(() => beatIndicator.classList.remove('pulse'), 100);
+
+            // Trigger visualization beat
+            if (audioCanvas && ctx) {
+                drawBeatFlash();
+            }
+        }, msPerBeat);
+    }
+
+    function stopBeatSimulation() {
+        if (beatSimulationInterval) {
+            clearInterval(beatSimulationInterval);
+            beatSimulationInterval = null;
+        }
+    }
+
+    // Canvas context for visualization
+    let ctx = null;
+
+    // Draw beat flash on canvas
+    function drawBeatFlash() {
+        if (!ctx || !audioCanvas) return;
+
+        const W = audioCanvas.width;
+        const H = audioCanvas.height;
+
+        // Flash effect
+        ctx.fillStyle = 'rgba(29, 185, 84, 0.3)';
+        ctx.fillRect(0, 0, W, H);
+
+        // Fade out
+        setTimeout(() => {
+            ctx.clearRect(0, 0, W, H);
+            drawIdleVisualization();
+        }, 100);
+    }
+
+    // Draw idle visualization showing audio features
+    function drawIdleVisualization() {
+        if (!ctx || !audioCanvas || !selectedTrack?.audioFeatures) return;
+
+        const W = audioCanvas.width;
+        const H = audioCanvas.height;
+        const features = selectedTrack.audioFeatures;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Draw feature bars
+        const featureList = [
+            { name: 'Energy', value: features.energy, color: '#ef4444' },
+            { name: 'Dance', value: features.danceability, color: '#f59e0b' },
+            { name: 'Valence', value: features.valence, color: '#22c55e' },
+            { name: 'Acoustic', value: features.acousticness, color: '#3b82f6' },
+            { name: 'Instrument', value: features.instrumentalness, color: '#8b5cf6' },
+            { name: 'Liveness', value: features.liveness, color: '#ec4899' }
+        ];
+
+        const barWidth = W / featureList.length;
+        const maxHeight = H - 30;
+
+        featureList.forEach((feat, i) => {
+            const x = i * barWidth + 5;
+            const barH = feat.value * maxHeight;
+
+            ctx.fillStyle = feat.color;
+            ctx.fillRect(x, H - barH - 15, barWidth - 10, barH);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(feat.name, x + barWidth / 2 - 5, H - 2);
+            ctx.fillText(Math.round(feat.value * 100) + '%', x + barWidth / 2 - 5, 12);
+        });
     }
 
     // Clear selected track
@@ -612,6 +685,9 @@
         hasStartedPlaying = false;
         isFading = false;
         YouTubePlayer.reload();
+
+        // Stop beat simulation
+        stopBeatSimulation();
 
         // Stop music
         const player = getCurrentPlayer();
@@ -632,6 +708,13 @@
         // Reset progress display
         progressBar.style.width = '0%';
         currentTimeEl.textContent = '0:00';
+
+        // Reset analyzer display
+        detectedBPM.textContent = '--';
+        analyzerStatus.textContent = 'Waiting for audio...';
+        if (ctx && audioCanvas) {
+            ctx.clearRect(0, 0, audioCanvas.width, audioCanvas.height);
+        }
 
         // Clear API explorer
         rawTrackData.textContent = 'No track selected';
@@ -727,6 +810,9 @@
 
         // Stop sync controller tracking
         SyncController.stopBoth();
+
+        // Redraw idle visualization (shows audio features)
+        drawIdleVisualization();
 
         updatePlayButton();
     }
