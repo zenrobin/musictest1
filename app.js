@@ -12,6 +12,7 @@
     let selectedTrack = null;
     let searchResultsCache = {};
     let fadeOnEnd = true;
+    let isFading = false; // Prevent double-fade
     let currentDuration = 0; // Track total duration for seeking
     let isDragging = false;
 
@@ -419,39 +420,38 @@
             audioCanvas.height = rect.height * (window.devicePixelRatio || 1);
         }
 
-        // Start analyzer — it will begin producing data once AudioContext is captured
+        // Status updates
+        AudioAnalyzer.onStatus((msg) => {
+            if (analyzerStatus) {
+                analyzerStatus.textContent = msg;
+            }
+        });
+
+        // Beat callback
         AudioAnalyzer.onBeat((beat) => {
-            // Flash beat indicator
             beatIndicator.classList.add('pulse');
             setTimeout(() => beatIndicator.classList.remove('pulse'), 100);
 
-            // Update BPM display
             if (beat.bpm > 0) {
                 detectedBPM.textContent = beat.bpm;
             }
         });
 
+        // Analysis callback
         AudioAnalyzer.onAnalysis((analysis) => {
-            // Update status when we're getting data
             if (analysis.overall > 0 && analyzerStatus) {
                 analyzerStatus.classList.add('active');
             }
         });
 
-        // Try to start — may not have AudioContext yet
+        // Start — will retry automatically until audio context is captured
         AudioAnalyzer.start(audioCanvas);
-
-        // Also try to start when music begins playing
-        const origToggle = togglePlayback;
     }
 
     // Try starting the audio analyzer (called after Spotify connects)
     function tryStartAnalyzer() {
         if (AudioAnalyzer.hasCapturedContext()) {
             AudioAnalyzer.start(audioCanvas);
-            if (analyzerStatus) {
-                analyzerStatus.textContent = 'Listening...';
-            }
         }
     }
 
@@ -603,6 +603,7 @@
     async function stopAndReset() {
         isPlaying = false;
         hasStartedPlaying = false; // Reset so next play starts fresh
+        isFading = false;
 
         // Pause YouTube (don't use stop() as it can trigger auto-play on seek)
         YouTubePlayer.pause();
@@ -690,34 +691,37 @@
 
     // Handle video state change
     function handleVideoStateChange(state) {
-        // Video ended
+        // Video ended — music should already be faded by progress handler
         if (state === YouTubePlayer.PlayerState.ENDED) {
             isPlaying = false;
             updatePlayButton();
 
-            if (fadeOnEnd) {
-                fadeOutMusic();
-            } else {
-                // Immediately stop music if fade is off
+            if (!isFading) {
+                // If fade didn't trigger from progress, stop music now
                 getCurrentPlayer().pause().catch(console.error);
             }
         }
     }
 
-    // Fade out music
+    // Fade out music over ~3 seconds
     async function fadeOutMusic() {
+        if (isFading) return; // Already fading
+        isFading = true;
+
         const player = getCurrentPlayer();
-        const steps = 10;
-        const duration = 2000;
+        const steps = 15;
+        const duration = 3000;
         const interval = duration / steps;
 
         for (let i = steps; i >= 0; i--) {
-            await player.setVolume(i * 10);
+            const vol = Math.round((i / steps) * 100);
+            await player.setVolume(vol);
             await new Promise(r => setTimeout(r, interval));
         }
 
         await player.pause();
-        await player.setVolume(50); // Reset volume
+        await player.setVolume(50); // Reset volume for next play
+        isFading = false;
     }
 
     // Handle progress updates
@@ -727,6 +731,19 @@
         progressBar.style.width = `${Math.min(percent, 100)}%`;
         currentTimeEl.textContent = formatTime(data.currentTime);
         totalTimeEl.textContent = formatTime(data.duration);
+
+        // Start fade 3 seconds before video ends
+        const remainingMs = data.duration - data.currentTime;
+        if (fadeOnEnd && isPlaying && remainingMs > 0 && remainingMs <= 3000 && !isFading) {
+            fadeOutMusic();
+        }
+
+        // Pause video just before the end to prevent YouTube end-screen
+        if (isPlaying && remainingMs > 0 && remainingMs <= 300) {
+            YouTubePlayer.pause();
+            isPlaying = false;
+            updatePlayButton();
+        }
     }
 
     // Adjust timing offset

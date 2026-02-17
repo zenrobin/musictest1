@@ -91,7 +91,10 @@ const YouTubePlayer = (function() {
                     'rel': 0,
                     'modestbranding': 1,
                     'enablejsapi': 1,
-                    'origin': window.location.origin
+                    'origin': window.location.origin,
+                    'iv_load_policy': 3,
+                    'fs': 0,
+                    'disablekb': 0
                 },
                 events: {
                     'onReady': (event) => {
