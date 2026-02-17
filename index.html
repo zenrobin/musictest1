@@ -141,7 +141,12 @@
                 <div class="tool-group">
                     <h4>Live Audio Analysis</h4>
                     <p class="tool-desc">Real-time frequency visualization and beat detection</p>
-                    <p class="tool-note">Note: Spotify uses DRM which may prevent audio capture in some browsers.</p>
+                    <div class="tab-capture-section">
+                        <button id="capture-tab-btn" class="btn btn-primary btn-small">
+                            <span class="capture-icon">&#127897;</span> Capture Tab Audio
+                        </button>
+                        <p class="tool-note">Click to capture audio from this browser tab. Enable "Share tab audio" when prompted.</p>
+                    </div>
                     <div class="audio-visualizer">
                         <canvas id="audio-canvas" width="800" height="120"></canvas>
                         <div id="analyzer-status" class="analyzer-status">Waiting for audio...</div>

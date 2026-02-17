@@ -612,6 +612,34 @@ header h1 {
     font-size: 0.85rem;
 }
 
+/* Tab Capture Section */
+.tab-capture-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.tab-capture-section .btn {
+    align-self: flex-start;
+}
+
+.tab-capture-section .btn.active {
+    background: var(--danger);
+}
+
+.tab-capture-section .btn.active:hover {
+    background: #dc2626;
+}
+
+.tab-capture-section .capture-icon {
+    margin-right: 4px;
+}
+
 /* Audio Visualizer */
 .audio-visualizer {
     position: relative;

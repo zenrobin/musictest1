@@ -185,6 +185,109 @@ const AudioAnalyzer = (function() {
     }
 
     // =========================================================
+    // Strategy 3: Tab Audio Capture via getDisplayMedia
+    // =========================================================
+
+    let tabCaptureStream = null;
+
+    async function captureTabAudio() {
+        try {
+            // Request tab audio capture - user will select which tab to share
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: false,  // We only want audio
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
+                }
+            });
+
+            // Check if audio track is present
+            const audioTracks = stream.getAudioTracks();
+            if (audioTracks.length === 0) {
+                // User might have shared screen without audio
+                stream.getTracks().forEach(t => t.stop());
+                updateStatus('No audio track - enable "Share tab audio" checkbox');
+                return false;
+            }
+
+            // Stop any previous capture
+            if (tabCaptureStream) {
+                tabCaptureStream.getTracks().forEach(t => t.stop());
+            }
+            tabCaptureStream = stream;
+
+            // Create our own AudioContext for analysis
+            if (!ownContext) {
+                ownContext = new _AudioContext();
+            }
+
+            // Resume context if suspended
+            if (ownContext.state === 'suspended') {
+                await ownContext.resume();
+            }
+
+            // Create source from the captured stream
+            const source = ownContext.createMediaStreamSource(stream);
+
+            // Create analyser if needed
+            if (!analyser) {
+                analyser = ownContext.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+                frequencyData = new Uint8Array(analyser.frequencyBinCount);
+                timeDomainData = new Uint8Array(analyser.fftSize);
+            }
+
+            // Connect source to analyser
+            source.connect(analyser);
+
+            captureMethod = 'tab-capture';
+            hasReceivedAudio = false;
+            silenceFrames = 0;
+            updateStatus('Tab audio capture active');
+
+            // Handle track ending (user stops sharing)
+            audioTracks[0].onended = () => {
+                updateStatus('Tab sharing ended');
+                captureMethod = 'none';
+                tabCaptureStream = null;
+            };
+
+            // Start analysis loop if not running
+            if (!isActive) {
+                isActive = true;
+                beatHistory = [];
+                beatTimestamps = [];
+                analysisLoop();
+            }
+
+            return true;
+        } catch (e) {
+            if (e.name === 'NotAllowedError') {
+                updateStatus('Tab capture cancelled');
+            } else {
+                updateStatus('Tab capture failed: ' + e.message);
+                console.error('[AudioAnalyzer] Tab capture error:', e);
+            }
+            return false;
+        }
+    }
+
+    function stopTabCapture() {
+        if (tabCaptureStream) {
+            tabCaptureStream.getTracks().forEach(t => t.stop());
+            tabCaptureStream = null;
+            captureMethod = 'none';
+            updateStatus('Tab capture stopped');
+        }
+    }
+
+    function isTabCaptureActive() {
+        return captureMethod === 'tab-capture' && tabCaptureStream !== null;
+    }
+
+    // =========================================================
     // Public API
     // =========================================================
 
@@ -474,6 +577,9 @@ const AudioAnalyzer = (function() {
     return {
         start,
         stop,
+        captureTabAudio,
+        stopTabCapture,
+        isTabCaptureActive,
         hasCapturedContext,
         getCaptureMethod,
         setSensitivity,

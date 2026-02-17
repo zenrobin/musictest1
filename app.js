@@ -92,6 +92,7 @@
     const detectedBPM = document.getElementById('detected-bpm');
     const beatIndicator = document.getElementById('beat-indicator');
     const beatSensitivity = document.getElementById('beat-sensitivity');
+    const captureTabBtn = document.getElementById('capture-tab-btn');
 
     // DOM Elements - API Explorer
     const rawTrackData = document.getElementById('raw-track-data');
@@ -409,6 +410,31 @@
         beatSensitivity.addEventListener('input', () => {
             AudioAnalyzer.setSensitivity(beatSensitivity.value / 10);
         });
+
+        // Tab audio capture button
+        captureTabBtn.addEventListener('click', toggleTabCapture);
+    }
+
+    // Toggle tab audio capture
+    async function toggleTabCapture() {
+        if (AudioAnalyzer.isTabCaptureActive()) {
+            AudioAnalyzer.stopTabCapture();
+            captureTabBtn.innerHTML = '<span class="capture-icon">&#127897;</span> Capture Tab Audio';
+            captureTabBtn.classList.remove('active');
+        } else {
+            captureTabBtn.disabled = true;
+            captureTabBtn.textContent = 'Starting...';
+
+            const success = await AudioAnalyzer.captureTabAudio();
+
+            captureTabBtn.disabled = false;
+            if (success) {
+                captureTabBtn.innerHTML = '<span class="capture-icon">&#9632;</span> Stop Capture';
+                captureTabBtn.classList.add('active');
+            } else {
+                captureTabBtn.innerHTML = '<span class="capture-icon">&#127897;</span> Capture Tab Audio';
+            }
+        }
     }
 
     // Setup audio analyzer
@@ -574,7 +600,7 @@
         updateUI();
     }
 
-    // Load random song from top playlist
+    // Load random song using search
     async function loadRandomSong() {
         if (!isAuthenticated || currentProvider !== 'spotify') {
             alert('Random song requires Spotify connection');
@@ -585,20 +611,23 @@
         randomSongBtn.textContent = 'Loading...';
 
         try {
-            // Use search API with random popular terms - more reliable than playlist access
+            // Use search API with random popular terms
             const popularTerms = [
-                'top hits', 'popular', 'billboard', 'hit songs',
+                'top hits 2024', 'popular music', 'billboard hot',
                 'Drake', 'Taylor Swift', 'The Weeknd', 'Ed Sheeran',
-                'Dua Lipa', 'Bad Bunny', 'Harry Styles', 'Beyoncé'
+                'Dua Lipa', 'Bad Bunny', 'Harry Styles', 'Beyoncé',
+                'Ariana Grande', 'Post Malone', 'Billie Eilish', 'Bruno Mars'
             ];
             const randomTerm = popularTerms[Math.floor(Math.random() * popularTerms.length)];
-            const offset = Math.floor(Math.random() * 50); // Random offset for variety
+            // Keep offset low to avoid issues with search result limits
+            const offset = Math.floor(Math.random() * 20);
 
             const result = await SpotifyAuth.apiRequest(
-                `/search?q=${encodeURIComponent(randomTerm)}&type=track&limit=20&offset=${offset}`
+                `/search?q=${encodeURIComponent(randomTerm)}&type=track&limit=50&offset=${offset}`
             );
 
-            const tracks = result.tracks?.items?.filter(t => t && t.preview_url !== null) || [];
+            // Filter for valid tracks (don't require preview_url - we use Web Playback SDK)
+            const tracks = result.tracks?.items?.filter(t => t && t.id && t.uri) || [];
 
             if (tracks.length > 0) {
                 const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
