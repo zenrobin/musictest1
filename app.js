@@ -528,8 +528,8 @@
         // Update sync controller
         SyncController.setTrack(selectedTrack);
 
-        // Fetch Spotify audio features and analysis
-        await fetchSpotifyAudioData(trackId);
+        // Fetch Spotify audio features and analysis (non-blocking)
+        fetchSpotifyAudioData(trackId);
 
         // Update API explorer
         rawTrackData.textContent = JSON.stringify(track, null, 2);
@@ -538,52 +538,43 @@
     }
 
     // Fetch audio features and analysis from Spotify API
-    async function fetchSpotifyAudioData(trackId) {
+    // Note: Spotify deprecated these APIs in late 2024 for some apps
+    function fetchSpotifyAudioData(trackId) {
         if (currentProvider !== 'spotify') return;
 
-        try {
-            // Fetch audio features (contains BPM, energy, etc.)
-            const features = await SpotifyAuth.apiRequest(`/audio-features/${trackId}`);
+        // Non-blocking fetch - don't await, just update UI when data arrives
+        SpotifyAuth.apiRequest(`/audio-features/${trackId}`)
+            .then(features => {
+                if (features && features.tempo) {
+                    const bpm = Math.round(features.tempo);
+                    detectedBPM.textContent = bpm;
+                    analyzerStatus.textContent = `${bpm} BPM`;
+                    analyzerStatus.classList.add('active');
 
-            if (features) {
-                // Update BPM display with actual Spotify data
-                const bpm = Math.round(features.tempo);
-                detectedBPM.textContent = bpm;
-                analyzerStatus.textContent = `Spotify: ${bpm} BPM`;
-                analyzerStatus.classList.add('active');
+                    if (selectedTrack) {
+                        selectedTrack.audioFeatures = features;
+                    }
+                    rawAudioFeatures.textContent = JSON.stringify(features, null, 2);
 
-                // Store features for later use
-                selectedTrack.audioFeatures = features;
+                    startBeatSimulation(bpm);
+                    drawIdleVisualization();
+                }
+            })
+            .catch(e => {
+                console.log('Audio features unavailable:', e.message);
+                analyzerStatus.textContent = 'Select a song to play';
+            });
 
-                // Update API explorer
-                rawAudioFeatures.textContent = JSON.stringify(features, null, 2);
-
-                // Start beat simulation based on BPM
-                startBeatSimulation(bpm);
-
-                // Draw audio features visualization
-                drawIdleVisualization();
-            }
-        } catch (e) {
-            console.log('Could not fetch audio features:', e.message);
-            analyzerStatus.textContent = 'Audio features unavailable';
-        }
-
-        try {
-            // Fetch detailed audio analysis (beats, sections, segments)
-            const analysis = await SpotifyAuth.apiRequest(`/audio-analysis/${trackId}`);
-
-            if (analysis) {
-                selectedTrack.audioAnalysis = analysis;
-                console.log('Audio analysis loaded:', {
-                    beats: analysis.beats?.length,
-                    sections: analysis.sections?.length,
-                    segments: analysis.segments?.length
-                });
-            }
-        } catch (e) {
-            console.log('Could not fetch audio analysis:', e.message);
-        }
+        // Audio analysis (also may be deprecated)
+        SpotifyAuth.apiRequest(`/audio-analysis/${trackId}`)
+            .then(analysis => {
+                if (analysis && selectedTrack) {
+                    selectedTrack.audioAnalysis = analysis;
+                }
+            })
+            .catch(e => {
+                console.log('Audio analysis unavailable:', e.message);
+            });
     }
 
     // Beat simulation state
